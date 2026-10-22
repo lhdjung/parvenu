@@ -32,3 +32,12 @@ README plots are not committed to `main`, so re-knitting doesn't add
 figures to the history. After knitting, replace the `figures` branch with a
 single commit, using the recipe in the setup chunk of README.Rmd. Don't
 commit `man/figures/` to `main`, and don't keep a history on `figures`.
+
+## CI status
+
+CI passed on all four jobs at c77ede8 (2026-10-22), after Ubuntu failures
+from glibc's handling of times that don't exist. The commits after it
+were tested only on macOS and haven't been pushed, to save CI minutes
+while more fixes may come. Linux and Windows differ from macOS in ways
+local tests miss, so expect the next push to need watching: check each
+job with `gh run view <id>`.
