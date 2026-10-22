@@ -1165,10 +1165,11 @@ fn par_locate_all_rs(
                 .collect(),
         )
     });
-    // Only R's thread may make R vectors. The matrices share their
-    // `dimnames`, and those with few rows their `dim`, as attributes may be.
+    // Only R's thread may make R vectors. Those with few rows share their
+    // `dim`, as attributes may, and all share the names "start" and "end":
+    // R copies the `dimnames` list itself, but not its elements.
     let dimnames: Robj = List::from_values([Robj::from(()), Robj::from(["start", "end"])]).into();
-    let dims: Vec<Robj> = (0..=16).map(|m| Robj::from([m as i32, 2])).collect();
+    let dims: Vec<Robj> = (0..=16).map(|m| Robj::from([m, 2])).collect();
     let res: Robj = List::new(out.len()).into();
     for (i, rows) in out.into_iter().enumerate() {
         let rows = rows.unwrap_or(vec![[NA_INT; 2]]);
@@ -1581,7 +1582,7 @@ fn hits<'a>(
     ac.find_overlapping_iter(s)
         .filter(move |m| {
             let hit = (m.pattern(), m.start(), m.end());
-            std::mem::replace(&mut last, Some(hit)) != Some(hit)
+            last.replace(hit) != Some(hit)
         })
         .filter(move |m| !splits_char(s, m.start(), m.end()))
         .filter(move |m| !bounds.joins(s, m.start(), m.end()))

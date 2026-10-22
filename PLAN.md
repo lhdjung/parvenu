@@ -411,7 +411,8 @@ with the same result, which is a use case, not a function.
 - `par_locate_all()` makes a matrix per string on R's thread, which is
   most of its time: 0.5s for 1e6 strings with 3 matches each, where
   stringi takes 0.57s and `gregexpr(perl = TRUE)` 2.3s. The matrices
-  share one `dimnames` and, up to 16 rows, one `dim`.
+  share the names `"start"` and `"end"` (R copies each `dimnames` list)
+  and, up to 16 rows, one `dim`.
 - `par_extract()` with several groups makes the matrix in one search:
   0.3s for 1e6 strings and 4 groups, against 0.55s for one call per
   group and 0.6s for `stri_match_first_regex()`.
