@@ -454,12 +454,19 @@ with the same result, which is a use case, not a function.
   doesn't exist or occurs twice comes out as in base: what it makes of
   them depends on the R version (before 4.4.0, `strptime()` passed on the
   isdst of a first `mktime()`) and the C library (glibc gives `NA` for
-  the day Pacific/Apia skipped in 2011, macOS a time on the next). With `tryFormats`, base checks for
-  `NA` after placing the times, so a format fails on a time that doesn't
-  exist and base goes on to a date-only format; `local_time()` does the
-  same, one format at a time. A format with `%z` fixes the instant, so
-  the zone only labels it. At 1e6 times over 127 years in Europe/Berlin:
-  0.36s, base 11s; over 2 years, 0.08s.
+  the day Pacific/Apia skipped in 2011, macOS a time on the next). With
+  `tryFormats`, base checks for `NA` after placing the times, so a format
+  fails on a time that doesn't exist and base goes on to a date-only
+  format; `local_time()` does the same, one format at a time. A format
+  with `%z` fixes the instant, so the zone only labels it. At 1e6 times
+  in Europe/Berlin: 0.83s over 2 years, 2.1s over 127 years; base 37s.
+- `strptime()` warns on a `%j` day after the year's last and a `%z`
+  offset beyond 14 hours, for each string and each format it tries. So
+  the strings that fail are read by base again, for its warnings, and
+  `tryFormats` with `%j` or `%z` go to base.
+- Month names and AM/PM are checked by asking `strptime()` to read the
+  English ones, not by `format()`: `strptime()` keeps the AM/PM of an
+  earlier locale where the C library gives none.
 - At 1e6 strings: dates 7ms (base 4.6s, `data.table::as.IDate()` 4.6s, as
   it calls base), times 12ms (base 15s).
 

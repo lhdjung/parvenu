@@ -104,16 +104,25 @@ test_that("tz = \"\" is parsed in Rust where the session is in UTC", {
 
 test_that("the other specifiers read as strptime() does", {
   n <- 1e4
+  # The results, and the warnings: base warns on a %j or %z it can't read.
+  warned <- function(expr) {
+    w <- character()
+    out <- withCallingHandlers(expr, warning = function(c) {
+      w <<- c(w, conditionMessage(c))
+      invokeRestart("muffleWarning")
+    })
+    list(out, w)
+  }
   sp <- function(s, f) {
     s <- rep(s, length.out = n)
     expect_identical(
-      par_as_posixct(s, format = f, tz = "UTC"),
-      suppressWarnings(as.POSIXct(s, format = f, tz = "UTC")),
+      warned(par_as_posixct(s, format = f, tz = "UTC")),
+      warned(as.POSIXct(s, format = f, tz = "UTC")),
       info = f
     )
     expect_identical(
-      par_as_date(s, format = f),
-      suppressWarnings(as.Date(s, format = f)),
+      warned(par_as_date(s, format = f)),
+      warned(as.Date(s, format = f)),
       info = f
     )
   }
@@ -217,7 +226,8 @@ test_that("month names in other locales go to base", {
     error = function(e) FALSE
   )
   skip_if_not(ok, "no de_DE.UTF-8 locale")
-  expect_false(english_time())
+  expect_false(english_time("%d %b %Y"))
+  expect_true(english_time("%Y-%m-%d"))
   s <- rep(c("05 Mar 2024", "05 März 2024", "05 Mai 2024", NA), 2500)
   expect_identical(par_as_date(s, "%d %b %Y"), as.Date(s, "%d %b %Y"))
   s <- rep("2020-01-01 1 PM", 1e4)

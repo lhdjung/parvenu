@@ -161,24 +161,45 @@ parse_time <- function(x, format, tryFormats, date, nthreads, split = FALSE) {
       (try_formats || length(formats) == 1L) &&
       length(formats) >= 1L &&
       !anyNA(formats) &&
-      (english_time() || !any(grepl("%[bBhp]", formats)))
+      # Base warns on a %j or %z it can't read, for each format it tries.
+      !(try_formats && any(grepl("%[jz]", formats))) &&
+      english_time(formats)
   ) {
-    par_parse_time_rs(as_utf8(x), formats, try_formats, date, split, nthreads)
+    out <- par_parse_time_rs(
+      as_utf8(x),
+      formats,
+      try_formats,
+      date,
+      split,
+      nthreads
+    )
+    if (!is.null(out) && any(grepl("%[jz]", formats))) {
+      # Only strings that fail can warn, so base reads those again.
+      failed <- is.na(if (split) out$whole else out) & !is.na(x)
+      if (any(failed)) {
+        strptime(x[failed], formats, tz = "UTC")
+      }
+    }
+    out
   }
 }
 
-# Whether strptime() reads the English month names and AM/PM that Rust does.
-# It takes them from the C library, as format() does, and some English
-# locales differ: glibc's en_GB abbreviates September as "Sept".
-english_time <- function() {
-  up <- function(x, f) toupper(format(x, f))
-  months <- ISOdate(2000, 1:12, 1)
-  identical(up(months, "%b"), toupper(month.abb)) &&
-    identical(up(months, "%B"), toupper(month.name)) &&
+# Whether strptime() reads the English month names and AM/PM that `formats`
+# use as Rust does. It takes them from the C library, and some English
+# locales differ: glibc's en_GB abbreviates September as "Sept", and macOS's
+# has "p.m.". So strptime() is asked, not format(): it keeps the AM/PM of
+# an earlier locale where the C library gives none.
+# ponytail: a string that isn't ASCII is read with wide-character copies of
+# these, which are kept separately, so could differ.
+english_time <- function(formats) {
+  read <- function(s, f) strptime(s, f, tz = "UTC")
+  (!any(grepl("%[bBh]", formats)) ||
     identical(
-      up(ISOdatetime(2000, 1, 1, c(1, 13), 0, 0, "UTC"), "%p"),
-      c("AM", "PM")
-    )
+      read(paste(c(month.abb, month.name), 1), "%b %d")$mon,
+      rep(0:11, 2L)
+    )) &&
+    (!any(grepl("%p", formats, fixed = TRUE)) ||
+      identical(read(c("1 AM", "1 PM"), "%I %p")$hour, c(1L, 13L)))
 }
 
 # Seconds of the times of `x` read with `formats` and placed in `tz`, or

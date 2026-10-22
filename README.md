@@ -264,7 +264,8 @@ they don’t cover. At a million dates or ten million numbers, on 8 cores:
 | `par_approx()` | `approx()` | 10 million points into 10,000 | 0.1s | 0.63s | 6x |
 
 `par_as_posixct()` parses in Rust in any time zone; outside UTC, base
-R's C code places the times, so 1 million take 0.36s instead of 12ms.
+R's C code places the times, so 1 million take 0.83s over two years, or
+2.1s over 127 years, instead of 12ms (base: 37s).
 `par_rank()` beats `data.table::frank()` (0.61s), while collapse
 sums groups faster than `par_rowsum()` (67ms).
 
