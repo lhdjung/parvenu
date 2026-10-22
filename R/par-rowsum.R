@@ -36,6 +36,7 @@ par_rowsum <- function(
       length(dim(x)) > 2L ||
       NROW(x) < RUST_MIN ||
       NROW(x) > .Machine$integer.max ||
+      !is.atomic(group) || # POSIXlt is a list
       length(group) != NROW(x) ||
       !is_bool(reorder) ||
       !is_bool(na.rm)

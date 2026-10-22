@@ -29,6 +29,8 @@ test_that("par_rowsum() agrees with rowsum() to the bit", {
     }
   }
   expect_warning(par_rowsum(xs[[1]], groups[[1]]), "missing values")
+  lt <- as.POSIXlt(.Date(sample(1:3, n, TRUE)))
+  expect_identical(par_rowsum(xs[[1]], lt), rowsum(xs[[1]], lt))
   # Of NA and NaN in one group, base keeps one, which depending on how R
   # was compiled
   x <- rep(c(NA, NaN, 1, NaN, NA, 1), length.out = 2e4)
