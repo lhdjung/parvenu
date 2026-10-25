@@ -108,7 +108,8 @@ par_match_fast <- function(x, table, nomatch, nthreads) {
       as_dbl(table),
       nomatch,
       nthreads,
-      dates_by_day()
+      # See par_match_rows()
+      as_date = getRversion() < "4.6.0"
     ))
   }
 

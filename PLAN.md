@@ -537,7 +537,7 @@ Versions:
   locked rayon need it. R 4.3 or later: base matches Dates by printed day
   only since `mtfrm()` arrived there. R 4.6.0 added `mtfrm.Date()`, which
   matches them by number, so `par_match()` and `par_match_rows()` check
-  the R version when called (`dates_by_day()`). `findInterval()` has
+  the R version when called (`getRversion() < "4.6.0"`). `findInterval()` has
   `checkSorted` and `checkNA` only from R 4.5.0, so the fallback to base
   passes them only from there. CI runs R 4.3 and the current release;
   locally, check both rules when R changes how it matches a class.

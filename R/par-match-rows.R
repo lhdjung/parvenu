@@ -58,14 +58,15 @@ par_match_rows <- function(
 
   day <- logical(length(x))
 
+  # Earlier versions compared Dates by their printed day, so 1.5 matched 1
+  dates_by_day <- getRversion() < "4.6.0"
+
   for (j in seq_along(x)) {
     a <- x[[j]]
     b <- table[[j]]
 
     if (identical(class(a), "Date") && identical(class(b), "Date")) {
-      # Before R 4.6.0, base matches Dates by their printed day; Rust floors
-      # them.
-      day[j] <- dates_by_day()
+      day[j] <- dates_by_day
       a <- as_dbl(a)
       b <- as_dbl(b)
     } else if (
