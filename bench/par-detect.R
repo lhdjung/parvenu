@@ -1,4 +1,4 @@
-# par_detect() against base and stringi; run after installing parvenu.
+# par_detect() against base, stringi, and re2; run after installing parvenu.
 library(parvenu)
 set.seed(1)
 words <- vapply(
@@ -18,6 +18,7 @@ for (pat in c("abc", "[aeiou]{3}[0-9]", "^q.*z\\s", "(?i)QU[a-z]+ ")) {
     base = grepl(perl, x, ignore.case = perl != pat),
     base_perl = grepl(perl, x, ignore.case = perl != pat, perl = TRUE),
     stringi = stringi::stri_detect_regex(x, pat),
+    re2 = re2::re2_detect(x, pat),
     parvenu_2 = par_detect(x, pat, nthreads = 2),
     parvenu_all = par_detect(x, pat),
     min_iterations = 3,

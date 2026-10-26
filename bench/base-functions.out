@@ -1,0 +1,101 @@
+1e6 dates and times
+# A tibble: 7 × 2
+  expression          median
+  <bch:expr>        <bch:tm>
+1 base_date            4.98s
+2 data.table_date         5s
+3 parvenu_date        13.4ms
+4 base_utc            14.82s
+5 parvenu_utc         14.9ms
+6 base_berlin_2y      36.39s
+7 parvenu_berlin_2y 788.43ms
+
+rank(), 1e7 doubles and 1e7 integers with many ties
+# A tibble: 6 × 2
+  expression       median
+  <bch:expr>     <bch:tm>
+1 base_dbl          9.92s
+2 data.table_dbl 538.84ms
+3 parvenu_dbl    208.69ms
+4 base_int         11.68s
+5 data.table_int 233.12ms
+6 parvenu_int    286.66ms
+
+rowsum(), 1e7 doubles in 1e+05 groups
+# A tibble: 3 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 base          2.02s
+2 collapse   113.05ms
+3 parvenu    210.89ms
+
+rowsum(), 1e7 doubles in 100 groups
+# A tibble: 3 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 base        323.8ms
+2 collapse     46.7ms
+3 parvenu     191.2ms
+
+approx(), 1e7 points into 1e4
+# A tibble: 2 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 base          833ms
+2 parvenu       153ms
+
+Sets and anyDuplicated(), 1e7 integers
+# A tibble: 9 × 2
+  expression          median
+  <bch:expr>        <bch:tm>
+1 base_union           2.04s
+2 parvenu_union     524.41ms
+3 base_intersect       1.57s
+4 parvenu_intersect 361.65ms
+5 base_setdiff         1.53s
+6 parvenu_setdiff   384.38ms
+7 base_any_dup      346.53ms
+8 collapse_any_dup  139.87ms
+9 parvenu_any_dup    44.15ms
+
+factor() and table(), 1e7 elements
+# A tibble: 9 × 2
+  expression            median
+  <bch:expr>          <bch:tm>
+1 base_factor_chr        1.04s
+2 collapse_factor_chr 110.91ms
+3 parvenu_factor_chr   403.3ms
+4 base_factor_int     877.31ms
+5 parvenu_factor_int  303.39ms
+6 base_table_int         1.01s
+7 parvenu_table_int   545.04ms
+8 base_table_chr         1.18s
+9 parvenu_table_chr   628.71ms
+
+R version 4.5.2 (2025-10-31)
+Platform: aarch64-apple-darwin20
+Running under: macOS Tahoe 26.5.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: Europe/Zurich
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] parvenu_0.0.0.9001
+
+loaded via a namespace (and not attached):
+ [1] utf8_1.2.6          collapse_2.1.8      magrittr_2.0.5     
+ [4] glue_1.8.1          tibble_3.3.1        parallel_4.5.2     
+ [7] pkgconfig_2.0.3     lifecycle_1.0.5     profmem_0.7.0      
+[10] cli_3.6.6           bench_1.1.4         vctrs_0.7.3        
+[13] data.table_1.18.2.1 compiler_4.5.2      tools_4.5.2        
+[16] pillar_1.11.1       Rcpp_1.1.2          rlang_1.3.0        
