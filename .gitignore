@@ -7,3 +7,4 @@ docs
 **/*.quarto_ipynb
 man/figures/README-*
 src/rust/vendor.tar.xz
+.claude/

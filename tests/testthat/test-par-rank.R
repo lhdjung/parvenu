@@ -1,3 +1,5 @@
+withr::local_options(parvenu.threads = 2) # CRAN allows at most 2 cores
+
 test_that("par_rank() agrees with rank()", {
   set.seed(1)
   n <- 5e4
