@@ -1,18 +1,18 @@
 Package: parvenu
-Title: Multithreaded Versions of Base R Functions for Large Vectors
+Title: Multithreaded Base R Functions and Text Search for Large Vectors
 Version: 0.0.0.9001
 Authors@R: person("Lukas", "Jung", , "jung-lukas@gmx.net", role = c("aut", "cre"))
-Description: Multithreaded versions of match(), %in%, duplicated(),
-    unique(), findInterval(), grepl(), regexpr(), sub(), and gsub(),
-    written in Rust, and matching on several key columns at once. match(),
-    %in%, duplicated(), unique(), and findInterval() give the same results
-    as base R, and fall back to it below the size where threads pay off.
-    Regex detection, counting, location, extraction, and replacement use
-    the syntax of Rust's regex crate. Dictionary lookup finds which of many
-    literal terms or regexes each string contains, how many hits it has, or
-    replaces them all, in one pass per string. as.Date(), as.POSIXct() in
-    UTC, rank(), rowsum(), approx(), factor(), table(), anyDuplicated(),
-    union(), intersect(), and setdiff() give base R's results too.
+Description: Multithreaded functions for large vectors, written in Rust,
+    in two families. Versions of match(), %in%, duplicated(), unique(),
+    anyDuplicated(), union(), intersect(), setdiff(), factor(), table(),
+    findInterval(), as.Date(), as.POSIXct(), rank(), rowsum(), and
+    approx() give the same results as base R, and fall back to it below
+    the size where threads pay off; rows can also be matched on several
+    key columns at once. Text search detects, counts, locates, extracts,
+    and replaces regex matches, in the syntax of Rust's regex crate, and
+    looks up many literal terms or regexes at once: which of them each
+    string contains, how many hits it has, or replacing them all, in one
+    pass per string.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

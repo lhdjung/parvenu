@@ -2,12 +2,28 @@
 
 ## Scope
 
-parvenu is a collection of fast, multithreaded utilities for large vectors
-that give base R's results, with no R package dependencies. A function
-belongs here if it is useful in itself and clearly beats base. It doesn't
-need to beat collapse or other packages by a wide margin: if collapse ties
-or narrowly wins, the function is still worth having for anyone who doesn't
-want another dependency.
+parvenu is a collection of fast, multithreaded utilities for large vectors,
+with no R package dependencies, in two families:
+
+- Base R functions that give base R's results, named `par_` plus the base
+  name. Results identical to base are the promise, and tests compare
+  against base.
+- Text search with Rust's regex and aho-corasick crates, named `par_` plus
+  a stringr verb. These can't give base's results, since the syntax is
+  Rust's, so their docs say where they differ.
+
+The text family is where threads pay off most: search is bound by the CPU,
+where hashing numbers is bound by memory and collapse is already close to
+that limit. Building R strings happens on R's thread only, so functions
+that return new strings gain less than those that return positions or
+counts.
+
+A function belongs here if it is useful in itself and clearly beats base.
+It doesn't need to beat collapse, stringi, or other packages by a wide
+margin: if they tie or narrowly win, the function is still worth having.
+Cover every common use within a family, so users of one family don't need
+another package for the rest of it. Don't remove a function for a thin
+margin over other packages.
 
 A simple R version is fine where it is good enough; Rust is for where it
 pays off. Measure against the fastest packages and report the numbers
