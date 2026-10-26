@@ -7,14 +7,16 @@
 
 <!-- badges: end -->
 
-parvenu provides ultra-fast parallel replacements for common R utility
-functions.
+parvenu runs common R work on all your cores, in Rust. It has two
+families of functions:
 
-It features equivalents of `match()`, `%in%`, `duplicated()`,
-`unique()`, `findInterval()`, `as.Date()`, `as.POSIXct()`, `rank()`,
-`rowsum()`, and `approx()`, row matching on several key columns, regex
-detection, counting, extraction, and replacement, and dictionary lookup
-and replacement, on all your cores. It is written in Rust.
+- Base R functions with base R’s results: `match()`, `%in%`,
+  `duplicated()`, `unique()`, `findInterval()`, `factor()`, `table()`,
+  the set operations, `as.Date()`, `as.POSIXct()`, `rank()`, `rowsum()`,
+  and `approx()`, plus row matching on several key columns.
+- Text search: regex detection, counting, location, extraction, and
+  replacement, and dictionary lookup and replacement of many terms at
+  once.
 
 `par_match()`, `%par_in%`, `par_duplicated()`, `par_unique()`,
 `par_find_interval()`, and the functions under [Dates, ranks, and
@@ -32,8 +34,8 @@ the details, and comparisons with collapse, stringi, and data.table):
 
 | Function | Replaces | Task | Time | Base R | Speedup |
 |----|----|----|----|----|----|
-| `par_match_term()` | `grepl(perl = TRUE)` on an alternation | 1,000 terms in 100,000 strings | 2.7ms | 15s | 5500x |
-| `par_detect()` | `grepl(perl = TRUE)` | a regex in 1 million strings | 54ms | 1.1s | 21x |
+| `par_match_term()` | `regexpr(perl = TRUE)` on an alternation | 1,000 terms in 100,000 strings | 2.7ms | 15s | 5500x |
+| `par_detect()` | `grepl(perl = TRUE)` | a regex in 1 million strings | 17ms | 0.25s | 15x |
 | `par_match()` | `match()` | 10 million strings in 10,000 keys | 11ms | 0.25s | 23x |
 | `par_match()` | `match()` | 10 million integers in 10,000 keys | 8ms | 0.12s | 15x |
 | `par_match_rows()` | `match()` on pasted columns | 1 million rows on two key columns | 18ms | 2.5s | 134x |
