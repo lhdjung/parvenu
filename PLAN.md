@@ -40,7 +40,8 @@ parvenu functions got. Don't feel shackled by it! Revise it if needed.
   dropped because collapse runs them at memory speed, where threads add
   nothing (see Skipped). Regex is the strongest case: it is limited by
   CPU, so threads scale, and at 1e6 strings `par_detect()` takes 7-16ms
-  against 53-247ms for `grepl(perl = TRUE)` and 221-378ms for stringi.
+  against 53-247ms for `grepl(perl = TRUE)`, 221-378ms for stringi, and
+  43-170ms for re2 (2026-10-26).
 - **Dictionary lookup is the widest margin.** `par_match_term()` is
   `match()` for substrings: which of `terms` each string contains, earliest
   term winning.

@@ -1,66 +1,70 @@
 
 pattern: abc   n = 1e6
-# A tibble: 5 × 2
+# A tibble: 6 × 2
   expression    median
   <bch:expr>  <bch:tm>
-1 base        330.06ms
-2 base_perl    75.73ms
-3 stringi     244.44ms
-4 parvenu_2     13.1ms
-5 parvenu_all   8.05ms
+1 base        329.91ms
+2 base_perl    75.81ms
+3 stringi     244.94ms
+4 re2          87.43ms
+5 parvenu_2    10.07ms
+6 parvenu_all   4.32ms
 
 pattern: [aeiou]{3}[0-9]   n = 1e6
-# A tibble: 5 × 2
+# A tibble: 6 × 2
   expression    median
   <bch:expr>  <bch:tm>
-1 base           1.12s
-2 base_perl      1.14s
-3 stringi        1.56s
-4 parvenu_2     57.6ms
-5 parvenu_all  53.93ms
+1 base         994.5ms
+2 base_perl    247.1ms
+3 stringi      376.5ms
+4 re2          170.5ms
+5 parvenu_2     37.6ms
+6 parvenu_all   16.8ms
 
 pattern: ^q.*z\s   n = 1e6
-# A tibble: 5 × 2
+# A tibble: 6 × 2
   expression    median
   <bch:expr>  <bch:tm>
-1 base           1.25s
-2 base_perl     93.7ms
-3 stringi     270.03ms
-4 parvenu_2    17.26ms
-5 parvenu_all  10.29ms
+1 base        287.32ms
+2 base_perl    61.59ms
+3 stringi     220.12ms
+4 re2           43.4ms
+5 parvenu_2    11.82ms
+6 parvenu_all   7.31ms
 
 pattern: (?i)QU[a-z]+    n = 1e6
-# A tibble: 5 × 2
+# A tibble: 6 × 2
   expression    median
   <bch:expr>  <bch:tm>
-1 base         570.9ms
-2 base_perl    106.9ms
-3 stringi        274ms
-4 parvenu_2     31.8ms
-5 parvenu_all   17.6ms
+1 base         551.1ms
+2 base_perl    106.2ms
+3 stringi        271ms
+4 re2          170.1ms
+5 parvenu_2     28.8ms
+6 parvenu_all   12.3ms
 
 Small inputs, pattern repeated so parvenu reuses the compiled regex
-n = 100 : 32.3µs 19.8µs 20.7µs 
-n = 1000 : 243.3µs  69.1µs  70.7µs 
-n = 3000 : 736µs 177µs 178µs 
-n = 10000 :   2.44ms 348.09µs 330.32µs 
-n = 30000 :   7.33ms 889.54µs 476.58µs 
+n = 100 : 32.2µs 22.6µs 24.1µs 
+n = 1000 : 247µs  72.1µs  73.6µs 
+n = 3000 : 749µs 181µs 183µs 
+n = 10000 :   2.5ms 361.8µs 330.6µs 
+n = 30000 :   7.49ms 884.86µs 549.71µs 
 
 One pattern per string, n = 1e6
 10 distinct patterns
 # A tibble: 3 × 2
   expression    median
   <bch:expr>  <bch:tm>
-1 stringi        2.08s
-2 parvenu_2    17.85ms
-3 parvenu_all  15.45ms
+1 stringi        2.23s
+2 parvenu_2    21.75ms
+3 parvenu_all  13.07ms
 9996 distinct patterns
 # A tibble: 3 × 2
   expression    median
   <bch:expr>  <bch:tm>
-1 stringi        2.67s
-2 parvenu_2   243.87ms
-3 parvenu_all  127.6ms
+1 stringi        2.65s
+2 parvenu_2   246.82ms
+3 parvenu_all 133.54ms
 
 R version 4.5.2 (2025-10-31)
 Platform: aarch64-apple-darwin20
@@ -80,10 +84,11 @@ attached base packages:
 [1] stats     graphics  grDevices utils     datasets  methods   base     
 
 other attached packages:
-[1] parvenu_0.0.0.9000
+[1] parvenu_0.0.0.9001
 
 loaded via a namespace (and not attached):
- [1] compiler_4.5.2  magrittr_2.0.5  bench_1.1.4     cli_3.6.6      
- [5] tools_4.5.2     pillar_1.11.1   glue_1.8.1      tibble_3.3.1   
- [9] utf8_1.2.6      vctrs_0.7.3     stringi_1.8.9   lifecycle_1.0.5
-[13] pkgconfig_2.0.3 rlang_1.3.0     profmem_0.7.0  
+ [1] utf8_1.2.6      magrittr_2.0.5  glue_1.8.1      tibble_3.3.1   
+ [5] pkgconfig_2.0.3 re2_0.1.4       lifecycle_1.0.5 profmem_0.7.0  
+ [9] cli_3.6.6       bench_1.1.4     vctrs_0.7.3     compiler_4.5.2 
+[13] tools_4.5.2     pillar_1.11.1   Rcpp_1.1.2      rlang_1.3.0    
+[17] stringi_1.8.9  
