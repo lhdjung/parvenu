@@ -1,3 +1,5 @@
+withr::local_options(parvenu.threads = 2) # CRAN allows at most 2 cores
+
 test_that("par_rowsum() agrees with rowsum() to the bit", {
   set.seed(4)
   n <- 1e5

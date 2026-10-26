@@ -1,3 +1,5 @@
+withr::local_options(parvenu.threads = 2) # CRAN allows at most 2 cores
+
 test_that("par_as_date() and par_as_posixct() agree with base on messy strings", {
   set.seed(42)
   n <- 2e4
