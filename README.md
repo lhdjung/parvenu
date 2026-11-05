@@ -287,6 +287,26 @@ variable. Every function takes `nthreads`, and
 `options(parvenu.threads = 2)` sets the default for a session. Inputs
 too small to keep that many threads busy use fewer.
 
+## parvenu and process pools
+
+[mizu](https://github.com/shikokuchuo/mizu) and
+[mirai](https://mirai.r-lib.org) run any R code in parallel, on pools of
+R processes; [mori](https://github.com/shikokuchuo/mori) shares R
+objects with such processes without copying them. parvenu is narrower:
+it has its own multithreaded versions of particular functions. Use the
+pools for model fits, bootstraps, and any other R code that parvenu
+doesn’t cover. For the functions it does cover, a single parvenu call is
+much faster than splitting the input across workers that each call base
+R. Each worker still runs base R’s code on one core, and the input has
+to reach the workers and the results come back. On 8 cores, with the
+pools already started (`bench/process-pools.R`):
+
+| Task | Base R | mizu | mirai | mirai + mori | parvenu |
+|----|----|----|----|----|----|
+| `grepl(perl = TRUE)` on 1 million strings | 0.25s | 0.6s | 0.18s | 0.16s | 14ms |
+| `match()` of 10 million integers into 1 million keys | 0.26s | 0.63s | 0.4s | 0.29s | 18ms |
+| `as.Date()` on 1 million strings | 4.6s | 1.3s | 1.1s | 1s | 9ms |
+
 ## Regex syntax
 
 Most patterns mean the same in Rust’s regex crate and in PCRE. The
