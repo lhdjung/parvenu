@@ -1,0 +1,88 @@
+Starting mizu with 8 workers: 0.309305 secs 
+Starting mirai with 8 daemons: 0.4994879 secs 
+
+ regex with 8 chunks
+# A tibble: 5 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 base        248.2ms
+2 mizu        598.3ms
+3 mirai         179ms
+4 mirai_mori  161.8ms
+5 parvenu      13.8ms
+
+ match with 8 chunks
+# A tibble: 5 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 base        297.1ms
+2 mizu        628.7ms
+3 mirai       399.6ms
+4 mirai_mori  290.6ms
+5 parvenu      24.7ms
+
+ date with 8 chunks
+# A tibble: 5 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 base          4.62s
+2 mizu          1.36s
+3 mirai          1.3s
+4 mirai_mori    1.13s
+5 parvenu      9.59ms
+
+ regex with 32 chunks
+# A tibble: 5 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 base        245.3ms
+2 mizu          600ms
+3 mirai       227.7ms
+4 mirai_mori  272.2ms
+5 parvenu      14.1ms
+
+ match with 32 chunks
+# A tibble: 5 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 base       257.02ms
+2 mizu          1.24s
+3 mirai      921.31ms
+4 mirai_mori 615.35ms
+5 parvenu     17.95ms
+
+ date with 32 chunks
+# A tibble: 5 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 base          4.67s
+2 mizu          1.33s
+3 mirai         1.08s
+4 mirai_mori    1.03s
+5 parvenu      8.51ms
+
+R version 4.5.2 (2025-10-31)
+Platform: aarch64-apple-darwin20
+Running under: macOS Tahoe 26.5.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: Europe/Zurich
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] mori_0.2.2         mirai_2.7.4        mizu_0.1.0         parvenu_0.0.0.9001
+
+loaded via a namespace (and not attached):
+ [1] utf8_1.2.6      magrittr_2.0.5  nanonext_1.10.4 glue_1.8.1     
+ [5] tibble_3.3.1    parallel_4.5.2  pkgconfig_2.0.3 lifecycle_1.0.5
+ [9] profmem_0.7.0   cli_3.6.6       bench_1.1.4     vctrs_0.7.3    
+[13] compiler_4.5.2  pillar_1.11.1   otel_0.2.0      rlang_1.3.0    
