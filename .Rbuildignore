@@ -18,3 +18,4 @@
 ^\.github$
 ^\.claude$
 ^man/figures/logo\.R$
+^markdown$
