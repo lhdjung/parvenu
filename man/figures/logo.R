@@ -37,13 +37,13 @@ fan <- function(cx, cy, r, n, cols, from = 0, to = 2 * pi, ry = r) {
 }
 
 # The face, turned three-quarters to the left: outline points A-N, inner
-# points O-X. Each triangle is one plane; a few are knocked out of place,
-# cubist style. The turn shows a sliver of the far eye beside the nose.
+# points O-X. Each triangle is one plane. The turn shows a sliver of the
+# far eye beside the nose.
 # fmt: skip
 p <- list(
   A = c(196, 150), B = c(172, 184), C = c(178, 206), D = c(140, 262),
   E = c(168, 268), F = c(164, 284), G = c(172, 294), H = c(166, 306),
-  I = c(180, 346), J = c(226, 362), K = c(290, 322), L = c(318, 290),
+  I = c(180, 349), J = c(226, 362), K = c(290, 322), L = c(318, 290),
   M = c(326, 200), N = c(290, 150), O = c(228, 206), P = c(262, 254),
   Q = c(218, 294), R = c(242, 318), X = c(202, 210)
 )
@@ -51,32 +51,31 @@ p <- list(
 planes <- list(
   list("ABX", "#fbefc0"),
   list("AXO", "#f6e6a8"),
-  list("AON", "#f0d98f", c(3, -6)),
+  list("AON", "#f0d98f"),
   list("NOP", "#e4cf86"),
-  list("NPM", "#d4b46a", c(5, -2)),
+  list("NPM", "#d4b46a"),
   list("BCX", "#e8d48e"),
   list("CDX", "#e4c97c"),
-  list("XDE", "#fbefc0", c(-5, -3)),
+  list("XDE", "#fbefc0"),
   list("XEP", "#f0d98f"),
   list("XPO", "#e8c878"),
   list("EQP", "#f2bd92"),
   list("EFG", "#ecc58a"),
   list("EGQ", "#f6e3a4"),
   list("GHQ", "#f6e6a8"),
-  list("HIQ", "#efd894", c(-3, 3)),
+  list("HIQ", "#efd894"),
   list("QIR", "#e0ca82"),
   list("QRP", "#e8d48e"),
-  list("PRK", "#d6c472", c(5, 5)),
+  list("PRK", "#d6c472"),
   list("PKL", "#ccb662"),
   list("PLM", "#d8bc72"),
-  list("IJR", "#e8d48e", c(-4, 5)),
+  list("IJR", "#e8d48e"),
   list("RJK", "#c8b264")
 )
 face <- vapply(
   planes,
   function(pl) {
-    shift <- if (length(pl) > 2) pl[[3]] else c(0, 0)
-    v <- lapply(strsplit(pl[[1]], "")[[1]], function(k) p[[k]] + shift)
+    v <- lapply(strsplit(pl[[1]], "")[[1]], function(k) p[[k]])
     do.call(S, c(list(pl[[2]]), v))
   },
   ""
@@ -90,7 +89,18 @@ coat <- c(
   S("#2a5320", 240, 430, 298, 372, 330, 620),
   S("#1f4018", 240, 430, 330, 620, 130, 620),
   S("#3c6d26", 262, 420, 306, 384, 292, 520),
-  S("#2c5822", 40, 440, 160, 420, 70, 600),
+  S("#2c5822", 40, 440, 160, 420, 70, 600)
+)
+# Pinstripes: faint parallel lines, the "par" in parvenu, clipped to the coat.
+pinstripes <- c(
+  sprintf('<clipPath id="coat">%s</clipPath>', paste(coat, collapse = "")),
+  '<g clip-path="url(#coat)" stroke="#e7c53a" stroke-width="1.6" stroke-opacity="0.45">',
+  sprintf(
+    '<line x1="%d" y1="360" x2="%d" y2="620"/>',
+    seq(0, 560, 20),
+    seq(0, 560, 20) - 24
+  ),
+  '</g>',
   S("#e7c53a", 198, 420, 238, 426, 216, 452)
 )
 
@@ -189,8 +199,11 @@ hat <- c(
     2 * pi,
     ry = 72
   ),
-  S("#2f5a22", 174, 125, 342, 125, 172, 141),
-  S("#3c6d26", 342, 125, 344, 141, 172, 141),
+  # band: two parallel stripes
+  S("#2f5a22", 174, 125, 342, 125, 173, 131),
+  S("#3c6d26", 342, 125, 343, 131, 173, 131),
+  S("#2f5a22", 173, 135, 343, 135, 172, 141),
+  S("#3c6d26", 343, 135, 344, 141, 172, 141),
   S("#6b3a1c", 136, 136, 258, 140, 156, 160),
   S("#4f2a13", 156, 160, 258, 140, 258, 166),
   S("#7d4522", 258, 140, 378, 130, 258, 166),
@@ -207,7 +220,7 @@ cravat <- c(
 )
 
 hexs <- pts(260, 10, 511.1, 155, 511.1, 445, 260, 590, 8.9, 445, 8.9, 155)
-font <- 'font-family="Bodoni 72 Oldstyle, Didot, Baskerville, serif" font-style="italic" font-size="70" fill="#f4e07c"'
+font <- 'font-family="Bodoni 72 Oldstyle, Didot, Baskerville, serif" font-style="italic" font-size="70" fill="#f4e07c" stroke="#24481b" stroke-width="6" paint-order="stroke"'
 
 svg <- c(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 600" width="520" height="600">',
@@ -218,6 +231,7 @@ svg <- c(
   '<g clip-path="url(#hex)">',
   '<rect width="520" height="600" fill="url(#bg)"/>',
   coat,
+  pinstripes,
   watch,
   flower,
   neck_collar,
@@ -226,8 +240,8 @@ svg <- c(
   features,
   hat,
   cravat,
-  sprintf('<text x="272" y="486" text-anchor="end" %s>par</text>', font),
-  sprintf('<text x="214" y="540" text-anchor="start" %s>venu</text>', font),
+  sprintf('<text x="36" y="248" text-anchor="start" %s>par</text>', font),
+  sprintf('<text x="478" y="334" text-anchor="end" %s>venu</text>', font),
   '</g>',
   sprintf(
     '<polygon points="%s" fill="none" stroke="#d9a62a" stroke-width="16" stroke-linejoin="round"/>',
