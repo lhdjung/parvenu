@@ -1,6 +1,7 @@
 # parvenu against base R run in parallel on pools of R processes: mizu
 # (shared memory), mirai (sockets), and mirai with its arguments shared
-# through mori; run after installing parvenu. All use all cores. The pools
+# through mori; run after installing parvenu. All use all cores, and
+# parvenu_1 shows how much of parvenu's lead remains on one. The pools
 # start once, outside the timings, and the inputs are split into chunks
 # outside the timings, so the pools' times include only moving the data,
 # the map, and joining the chunks' results. For mori, that includes
@@ -54,19 +55,19 @@ tasks <- list(
     x = strings,
     f = grepl,
     args = list(pattern = "[aeiou]{3}[0-9]", perl = TRUE),
-    parvenu = function() par_detect(strings, "[aeiou]{3}[0-9]")
+    parvenu = function(...) par_detect(strings, "[aeiou]{3}[0-9]", ...)
   ),
   match = list(
     x = ints,
     f = match,
     args = list(table = keys),
-    parvenu = function() par_match(ints, keys)
+    parvenu = function(...) par_match(ints, keys, ...)
   ),
   date = list(
     x = dates,
     f = as.Date,
     args = list(),
-    parvenu = function() par_as_date(dates)
+    parvenu = function(...) par_as_date(dates, ...)
   )
 )
 
@@ -81,6 +82,7 @@ for (k in c(cores, 4 * cores)) {
       mizu = on_mizu(chunks, t$f, t$args),
       mirai = on_mirai(chunks, t$f, t$args),
       mirai_mori = on_mirai_mori(chunks, t$f, t$args),
+      parvenu_1 = t$parvenu(nthreads = 1),
       parvenu = t$parvenu(),
       min_iterations = 3,
       filter_gc = FALSE

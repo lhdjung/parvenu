@@ -1,65 +1,71 @@
-Starting mizu with 8 workers: 0.309305 secs 
-Starting mirai with 8 daemons: 0.4994879 secs 
+Starting mizu with 8 workers: 0.2843721 secs 
+Starting mirai with 8 daemons: 0.4449251 secs 
 
  regex with 8 chunks
-# A tibble: 5 × 2
+# A tibble: 6 × 2
   expression   median
   <bch:expr> <bch:tm>
-1 base        248.2ms
-2 mizu        598.3ms
-3 mirai         179ms
-4 mirai_mori  161.8ms
-5 parvenu      13.8ms
+1 base       246.09ms
+2 mizu       604.38ms
+3 mirai      161.08ms
+4 mirai_mori 151.71ms
+5 parvenu_1   55.42ms
+6 parvenu      9.16ms
 
  match with 8 chunks
-# A tibble: 5 × 2
+# A tibble: 6 × 2
   expression   median
   <bch:expr> <bch:tm>
-1 base        297.1ms
-2 mizu        628.7ms
-3 mirai       399.6ms
-4 mirai_mori  290.6ms
-5 parvenu      24.7ms
+1 base        246.7ms
+2 mizu        519.6ms
+3 mirai       312.4ms
+4 mirai_mori  265.2ms
+5 parvenu_1    64.8ms
+6 parvenu      13.9ms
 
  date with 8 chunks
-# A tibble: 5 × 2
+# A tibble: 6 × 2
   expression   median
   <bch:expr> <bch:tm>
-1 base          4.62s
-2 mizu          1.36s
-3 mirai          1.3s
-4 mirai_mori    1.13s
-5 parvenu      9.59ms
+1 base          4.55s
+2 mizu          1.18s
+3 mirai      954.41ms
+4 mirai_mori 941.06ms
+5 parvenu_1   33.87ms
+6 parvenu      7.09ms
 
  regex with 32 chunks
-# A tibble: 5 × 2
+# A tibble: 6 × 2
   expression   median
   <bch:expr> <bch:tm>
-1 base        245.3ms
-2 mizu          600ms
-3 mirai       227.7ms
-4 mirai_mori  272.2ms
-5 parvenu      14.1ms
+1 base       247.24ms
+2 mizu        529.7ms
+3 mirai      135.43ms
+4 mirai_mori 153.14ms
+5 parvenu_1   55.36ms
+6 parvenu      9.57ms
 
  match with 32 chunks
-# A tibble: 5 × 2
+# A tibble: 6 × 2
   expression   median
   <bch:expr> <bch:tm>
-1 base       257.02ms
-2 mizu          1.24s
-3 mirai      921.31ms
-4 mirai_mori 615.35ms
-5 parvenu     17.95ms
+1 base       265.73ms
+2 mizu          1.11s
+3 mirai      882.22ms
+4 mirai_mori 462.49ms
+5 parvenu_1   70.59ms
+6 parvenu     14.04ms
 
  date with 32 chunks
-# A tibble: 5 × 2
+# A tibble: 6 × 2
   expression   median
   <bch:expr> <bch:tm>
-1 base          4.67s
-2 mizu          1.33s
-3 mirai         1.08s
-4 mirai_mori    1.03s
-5 parvenu      8.51ms
+1 base           4.6s
+2 mizu          1.16s
+3 mirai       947.6ms
+4 mirai_mori  958.2ms
+5 parvenu_1   32.92ms
+6 parvenu      7.03ms
 
 R version 4.5.2 (2025-10-31)
 Platform: aarch64-apple-darwin20
