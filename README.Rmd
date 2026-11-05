@@ -24,7 +24,7 @@ knitr::opts_knit$set(
 )
 ```
 
-# parvenu
+# parvenu <img src="man/figures/logo.png" align="right" height="139" alt="" />
 
 <!-- badges: start -->
 <!-- badges: end -->
