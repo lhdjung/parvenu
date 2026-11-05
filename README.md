@@ -303,9 +303,14 @@ pools already started (`bench/process-pools.R`):
 
 | Task | Base R | mizu | mirai | mirai + mori | parvenu |
 |----|----|----|----|----|----|
-| `grepl(perl = TRUE)` on 1 million strings | 0.25s | 0.6s | 0.18s | 0.16s | 14ms |
-| `match()` of 10 million integers into 1 million keys | 0.26s | 0.63s | 0.4s | 0.29s | 18ms |
-| `as.Date()` on 1 million strings | 4.6s | 1.3s | 1.1s | 1s | 9ms |
+| `grepl(perl = TRUE)` on 1 million strings | 0.25s | 0.53s | 0.14s | 0.15s | 9ms |
+| `match()` of 10 million integers into 1 million keys | 0.25s | 0.52s | 0.31s | 0.27s | 14ms |
+| `as.Date()` on 1 million strings | 4.6s | 1.2s | 0.95s | 0.94s | 7ms |
+
+On one thread, parvenu takes 55ms, 65ms, and 33ms for these tasks, so
+most of its lead over base R comes from its own code rather than from
+threads: a regex engine that doesn’t backtrack, a faster hash table, and
+a parser for the common date formats.
 
 ## Regex syntax
 
