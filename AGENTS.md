@@ -47,7 +47,8 @@ pre-commit hook rejects staged R files that air would change.
 README plots are not committed to `main`, so re-knitting doesn't add
 figures to the history. After knitting, replace the `figures` branch with a
 single commit, using the recipe in the setup chunk of README.Rmd. Don't
-commit `man/figures/` to `main`, and don't keep a history on `figures`.
+commit the README plots (`man/figures/README-*`) to `main`, and don't keep
+a history on `figures`. The logo in `man/figures/` does belong on `main`.
 
 ## CI status
 
