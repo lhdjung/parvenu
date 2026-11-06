@@ -31,11 +31,11 @@ A simple R version is fine where it is good enough; Rust is for where it
 pays off. Measure against the fastest packages and report the numbers
 honestly, but don't let them veto a good function.
 
-## PLAN.md
+## markdown/PLAN.md
 
-PLAN.md is a working record, not a set of rules. Much of it was written
-before any parvenu function, so it doesn't always reflect how fast the
-package is. Revise it when it stands in the way of a good feature,
+markdown/PLAN.md is a working record, not a set of rules. Much of it was
+written before any parvenu function, so it doesn't always reflect how fast
+the package is. Revise it when it stands in the way of a good feature,
 rather than following it to the letter.
 
 ## Formatting
