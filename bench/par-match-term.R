@@ -1,8 +1,9 @@
 # par_match_term() against base, stringi, and AhoCorasickTrie; run after
-# installing parvenu. Only stringi_loop has par_match_term()'s exact semantics
-# (first term in `terms` order). The extract + match() rows find the leftmost
-# term instead, and AhoCorasickTrie returns a nested list of every hit, timed
-# here without the R code that would turn it into term indices.
+# installing parvenu. Only base_loop and stringi_loop have par_match_term()'s
+# exact semantics (first term in `terms` order). The extract + match() rows
+# find the leftmost term instead, and AhoCorasickTrie returns a nested list
+# of every hit, timed here without the R code that would turn it into term
+# indices.
 library(parvenu)
 set.seed(1)
 word <- function(n) {
@@ -23,14 +24,19 @@ terms <- sample(vocabulary, 1000)
 pattern <- paste(terms, collapse = "|")
 X <- toupper(x)
 
-stringi_loop <- function(x, terms) {
-  out <- rep(NA_integer_, length(x))
-  for (i in rev(seq_along(terms))) {
-    out[stringi::stri_detect_fixed(x, terms[i])] <- i
+term_loop <- function(detect) {
+  function(x, terms) {
+    out <- rep(NA_integer_, length(x))
+    for (i in rev(seq_along(terms))) {
+      out[detect(x, terms[i])] <- i
+    }
+    out
   }
-  out
 }
+base_loop <- term_loop(function(x, t) grepl(t, x, fixed = TRUE))
+stringi_loop <- term_loop(stringi::stri_detect_fixed)
 stopifnot(identical(par_match_term(x, terms), stringi_loop(x, terms)))
+stopifnot(identical(par_match_term(x, terms), base_loop(x, terms)))
 stopifnot(identical(
   par_match_term(X, terms, ignore_case = TRUE),
   par_match_term(x, terms)
@@ -39,6 +45,7 @@ stopifnot(identical(
 cat("1e5 strings, 1000 terms\n")
 print(bench::mark(
   base_perl = match(regmatches(x, regexpr(pattern, x, perl = TRUE)), terms),
+  base_loop = base_loop(x, terms),
   stringi = match(stringi::stri_extract_first_regex(x, pattern), terms),
   stringi_loop = stringi_loop(x, terms),
   AhoCorasickTrie = AhoCorasickTrie::AhoCorasickSearch(terms, x),
