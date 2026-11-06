@@ -4,8 +4,10 @@
 # parvenu_1 shows how much of parvenu's lead remains on one. The pools
 # start once, outside the timings, and the inputs are split into chunks
 # outside the timings, so the pools' times include only moving the data,
-# the map, and joining the chunks' results. For mori, that includes
-# share(), which a session could do once for data it reuses. The README
+# the map, and joining the chunks' results. The other arguments, such as
+# match()'s table, are sent to mirai's daemons once per task, outside the
+# timings too, as a session would for data it reuses; mizu gets them with
+# every chunk. For mori, the times include share() of the chunks. The README
 # gives the lower median of the two runs (8 and 32 chunks) for every row.
 library(parvenu)
 library(mizu)
@@ -26,11 +28,13 @@ join <- function(results) do.call(c, unname(results))
 on_mizu <- function(chunks, f, args) {
   join(mizu_collect(do.call(mizu_map, c(list(pool, chunks, f), args))))
 }
-on_mirai <- function(chunks, f, args) {
-  join(mirai_map(chunks, f, .args = args)[])
+# `args` is preloaded on the daemons by everywhere(), below
+apply_preloaded <- function(x, f) do.call(f, c(list(x), args))
+on_mirai <- function(chunks, f) {
+  join(mirai_map(chunks, apply_preloaded, .args = list(f = f))[])
 }
-on_mirai_mori <- function(chunks, f, args) {
-  join(mirai_map(share(chunks), f, .args = lapply(args, share))[])
+on_mirai_mori <- function(chunks, f) {
+  join(mirai_map(share(chunks), apply_preloaded, .args = list(f = f))[])
 }
 chunk <- function(x, k) {
   split(x, rep(seq_len(k), length.out = length(x)) |> sort())
@@ -75,13 +79,14 @@ for (k in c(cores, 4 * cores)) {
   for (name in names(tasks)) {
     t <- tasks[[name]]
     chunks <- chunk(t$x, k)
+    invisible(everywhere({}, args = t$args)[])
     cat("\n", name, "with", k, "chunks\n")
     # check = TRUE: every way gives the same result as base
     print(bench::mark(
       base = do.call(t$f, c(list(t$x), t$args)),
       mizu = on_mizu(chunks, t$f, t$args),
-      mirai = on_mirai(chunks, t$f, t$args),
-      mirai_mori = on_mirai_mori(chunks, t$f, t$args),
+      mirai = on_mirai(chunks, t$f),
+      mirai_mori = on_mirai_mori(chunks, t$f),
       parvenu_1 = t$parvenu(nthreads = 1),
       parvenu = t$parvenu(),
       min_iterations = 3,
