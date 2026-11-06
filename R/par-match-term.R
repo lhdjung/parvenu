@@ -40,8 +40,10 @@
 #'   is `(?i)`.
 #' @param whole_word If `TRUE`, a term counts only where it isn't part of a
 #'   longer word: the characters right before and after it must not be
-#'   letters, digits, or `_`, in any script. `"york"` then matches
-#'   `"new york"` and `"york, uk"`, but not `"yorkshire"`. An apostrophe
+#'   word characters, those `\\w` matches: letters, digits, and marks (such
+#'   as an accent written as a character of its own) in any script, and
+#'   `_`. `"york"` then matches `"new york"` and `"york, uk"`, but not
+#'   `"yorkshire"`. An apostrophe
 #'   between two such characters joins them into one word, so `"won"`
 #'   doesn't match `"won't"`, nor `"heaven"` `"heaven's"`; this holds for
 #'   `'` and the curly `\u2019`. With `fixed = FALSE`, the same goes for a
