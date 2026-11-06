@@ -34,7 +34,7 @@ parvenu runs common R work on all your cores, in Rust. It has two families of fu
 - Base R functions with base R's results: `match()`, `%in%`, `duplicated()`, `unique()`, `findInterval()`, `factor()`, `table()`, the set operations, `as.Date()`, `as.POSIXct()`, `rank()`, `rowsum()`, and `approx()`, plus row matching on several key columns.
 - Text search: regex detection, counting, location, extraction, and replacement, and dictionary lookup and replacement of many terms at once.
 
-`par_match()`, `%par_in%`, `par_duplicated()`, `par_unique()`, `par_find_interval()`, and the functions under [Dates, ranks, and sums](#dates-ranks-and-sums) behave exactly like base R, so they are drop-in replacements. `par_detect()` is `grepl()` with the syntax of Rust's [regex crate](https://docs.rs/regex/latest/regex/#syntax), which never backtracks.
+`par_match()`, `%par_in%`, `par_duplicated()`, `par_unique()`, `par_any_duplicated()`, `par_union()`, `par_intersect()`, `par_setdiff()`, `par_factor()`, `par_table()`, `par_find_interval()`, and the functions under [Dates, ranks, and sums](#dates-ranks-and-sums) behave exactly like base R, so they are drop-in replacements. `par_detect()` is `grepl()` with the syntax of Rust's [regex crate](https://docs.rs/regex/latest/regex/#syntax), which never backtracks.
 
 The gains are largest where base R is slow and the work is bound by CPU: matching text against a large dictionary of terms, and looking up millions of keys.
 
