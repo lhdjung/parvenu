@@ -19,7 +19,9 @@ families of functions:
   once.
 
 `par_match()`, `%par_in%`, `par_duplicated()`, `par_unique()`,
-`par_find_interval()`, and the functions under [Dates, ranks, and
+`par_any_duplicated()`, `par_union()`, `par_intersect()`,
+`par_setdiff()`, `par_factor()`, `par_table()`, `par_find_interval()`,
+and the functions under [Dates, ranks, and
 sums](#dates-ranks-and-sums) behave exactly like base R, so they are
 drop-in replacements. `par_detect()` is `grepl()` with the syntax of
 Rust’s [regex crate](https://docs.rs/regex/latest/regex/#syntax), which
