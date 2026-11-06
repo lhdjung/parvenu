@@ -215,11 +215,11 @@ The default is all cores, or the `RAYON_NUM_THREADS` environment variable. Every
 
 | Task | Base R | mizu | mirai | mirai + mori | parvenu |
 |---|---|---|---|---|---|
-| `grepl(perl = TRUE)` on 1 million strings | 0.25s | 0.53s | 0.14s | 0.15s | 9ms |
-| `match()` of 10 million integers into 1 million keys | 0.25s | 0.52s | 0.31s | 0.27s | 14ms |
-| `as.Date()` on 1 million strings | 4.6s | 1.2s | 0.95s | 0.94s | 7ms |
+| `grepl(perl = TRUE)` on 1 million strings | 0.25s | 0.58s | 0.15s | 0.15s | 10ms |
+| `match()` of 10 million integers into 1 million keys | 0.25s | 0.62s | 0.37s | 0.29s | 15ms |
+| `as.Date()` on 1 million strings | 4.6s | 1.2s | 0.99s | 0.96s | 7ms |
 
-On one thread, parvenu takes 55ms, 65ms, and 33ms for these tasks, so most of its lead over base R comes from its own code rather than from threads: a regex engine that doesn't backtrack, a faster hash table, and a parser for the common date formats.
+On one thread, parvenu takes 56ms, 71ms, and 33ms for these tasks, so most of its lead over base R comes from its own code rather than from threads: a regex engine that doesn't backtrack, a faster hash table, and a parser for the common date formats.
 
 ## Regex syntax
 
