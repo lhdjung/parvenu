@@ -53,3 +53,9 @@ test_that("Rust refuses codes outside the groups", {
   )
   expect_error(par_rowsum_rs(c(1, 2, 3), 1:2, 2L, FALSE, TRUE, 1L), "malformed")
 })
+
+test_that("par_rowsum() takes a matrix without columns", {
+  g <- rep(c("b", "a"), 1e4)
+  x <- matrix(0, length(g), 0)
+  expect_identical(par_rowsum(x, g), rowsum(x, g))
+})
