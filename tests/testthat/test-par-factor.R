@@ -1,5 +1,3 @@
-withr::local_options(parvenu.threads = 2) # CRAN allows at most 2 cores
-
 set.seed(10)
 n <- 3e4
 xs <- list(

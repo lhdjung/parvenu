@@ -1,5 +1,3 @@
-withr::local_options(parvenu.threads = 2) # CRAN allows at most 2 cores
-
 test_that("par_approx() agrees with approx()", {
   set.seed(5)
   xout <- c(runif(1e5, -1, 12), NA, NaN, 0, 10, Inf)

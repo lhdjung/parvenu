@@ -1,5 +1,3 @@
-withr::local_options(parvenu.threads = 2) # CRAN allows at most 2 cores
-
 # The definition, for columns whose printed values are exact: match() on
 # rows pasted into strings.
 match_rows_base <- function(x, table, nomatch = NA_integer_) {
