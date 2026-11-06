@@ -32,8 +32,10 @@ is \code{(?i)}.}
 
 \item{whole_word}{If \code{TRUE}, a term counts only where it isn't part of a
 longer word: the characters right before and after it must not be
-letters, digits, or \verb{_}, in any script. \code{"york"} then matches
-\code{"new york"} and \code{"york, uk"}, but not \code{"yorkshire"}. An apostrophe
+word characters, those \verb{\\w} matches: letters, digits, and marks (such
+as an accent written as a character of its own) in any script, and
+\verb{_}. \code{"york"} then matches \code{"new york"} and \code{"york, uk"}, but not
+\code{"yorkshire"}. An apostrophe
 between two such characters joins them into one word, so \code{"won"}
 doesn't match \code{"won't"}, nor \code{"heaven"} \code{"heaven's"}; this holds for
 \verb{'} and the curly \verb{\\u2019}. With \code{fixed = FALSE}, the same goes for a

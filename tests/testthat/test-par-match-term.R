@@ -604,3 +604,19 @@ test_that("par_match_term_all() pairs strings with the terms they contain", {
     list2DF(list(x = integer(), term = integer(), n = integer()))
   )
 })
+
+test_that("whole_word counts marks and joiners as part of a word", {
+  x <- c(
+    "café au lait", # the accent as a mark of its own
+    "क्या", # a virama after the letter
+    "می‌خواهم", # a zero-width non-joiner
+    "cafe au lait"
+  )
+  terms <- c("cafe", "क", "می")
+  for (fixed in c(TRUE, FALSE)) {
+    expect_identical(
+      par_match_term(x, terms, whole_word = TRUE, fixed = fixed),
+      c(NA, NA, NA, 1L)
+    )
+  }
+})

@@ -2789,11 +2789,13 @@ fn par_approx_rs(
     Doubles::from_values(out)
 }
 
-/// Whether a character counts as part of a word for `whole_word`: a letter
-/// or digit in any script, or `_`, as in a Unicode `\w`. `None` (the edge of
-/// the string, or bytes that aren't UTF-8) doesn't.
+/// Whether a character counts as part of a word for `whole_word`: one that
+/// a Unicode `\w` matches, as the regexes' `\b` sees it: letters, marks, and
+/// digits in any script, `_`, and the joiners, so "cafe" isn't a word of a
+/// "café" whose accent is a mark of its own. `None` (the edge of the string,
+/// or bytes that aren't UTF-8) doesn't.
 fn is_word(c: Option<char>) -> bool {
-    c.is_some_and(|c| c.is_alphanumeric() || c == '_')
+    c.is_some_and(regex_syntax::is_word_character)
 }
 
 /// The first character of UTF-8 bytes.
