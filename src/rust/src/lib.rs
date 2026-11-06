@@ -2,6 +2,8 @@ use extendr_api::prelude::*;
 use extendr_api::SEXP;
 use rayon::prelude::*;
 use rustc_hash::{FxBuildHasher, FxHashMap as HashMap};
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 use std::hash::{BuildHasher, Hash};
 use std::os::raw::{c_char, c_int, c_uint};
 use std::sync::{Arc, Mutex};
@@ -1496,14 +1498,10 @@ impl<'a> Search<'a> {
             }
             Terms::Regex(sets, regexes) => {
                 let set = &sets[rayon::current_thread_index().unwrap_or(0) % sets.len()];
-                // The regexes' `\b` doesn't see an apostrophe join a match to
-                // a word, so where there may be one, matches are checked.
-                // 0x99 ends the curly apostrophe, and some other characters.
-                // ponytail: a match that fails this check hides any other
-                // match at the same start, as "won" does "won't" in
+                // ponytail: a match that fails `may_join()`'s check hides any
+                // other match at the same start, as "won" does "won't" in
                 // "won|won't"; list the longer alternative first.
-                let check =
-                    (bounds.start || bounds.end) && s.iter().any(|&b| b == b'\'' || b == 0x99);
+                let check = may_join(s, bounds);
                 for t in set.matches(s).iter() {
                     if !every && !check {
                         if !f(t as u32, 0, 0) {
@@ -1540,6 +1538,46 @@ impl<'a> Search<'a> {
             _ => new.extend_from_slice(rep),
         }
     }
+
+    /// The first hit of regex term `t` in `s` from `from` on, as `each()`
+    /// counts them, but not an empty one at `avoid`, where the term's own
+    /// last hit ended, as the regex's iterators skip it. `None` for literal
+    /// terms, whose hits `each()` gives in full, overlapping ones included.
+    fn hit_from(
+        &mut self,
+        s: &[u8],
+        bounds: Bounds,
+        t: u32,
+        from: usize,
+        mut avoid: Option<usize>,
+    ) -> Option<(usize, usize)> {
+        let Terms::Regex(_, regexes) = self.terms else {
+            return None;
+        };
+        let t = t as usize;
+        let re = self.res[t].get_or_insert_with(|| regexes[t].clone());
+        let check = may_join(s, bounds);
+        let mut at = from;
+        while at <= s.len() {
+            let m = re.find_at(s, at)?;
+            let (i, j) = (m.start(), m.end());
+            if !(splits_char(s, i, j)
+                || (check && bounds.joins(s, i, j))
+                || (i == j && avoid == Some(i)))
+            {
+                return Some((i, j));
+            }
+            (at, avoid) = (j.max(i + 1), (j > i).then_some(j));
+        }
+        None
+    }
+}
+
+/// Whether a regex term's match in `s` may need `Bounds::joins()`: the
+/// regexes' `\b` doesn't see an apostrophe join a match to a word. 0x99 ends
+/// the curly apostrophe, and some other characters.
+fn may_join(s: &[u8], bounds: Bounds) -> bool {
+    (bounds.start || bounds.end) && s.iter().any(|&b| b == b'\'' || b == 0x99)
 }
 
 /// `s` lowercased into `buf`, for `ignore_case` beyond ASCII, with `at[i]`
@@ -1752,6 +1790,7 @@ fn par_replace_term_rs(
         end: word_end,
     };
     let m = compile_terms(&terms, ignore_case, bounds, fixed)?;
+    let regex = matches!(*m, Terms::Regex(..));
     let reps: Vec<&[u8]> = unsafe { charsxps(&replacement).iter().map(|&p| bytes(p)).collect() };
     let rep = |t: u32| {
         if reps.len() == 1 {
@@ -1769,26 +1808,45 @@ fn par_replace_term_rs(
         nthreads,
         || Search::new(&m),
         |search, _, s| {
-            let mut hits = Vec::new();
-            search.each(s, bounds, true, |t, i, j| {
-                hits.push((i, t, j));
+            // Hits as (start, term, end), the leftmost first. Literal terms
+            // come with every hit; a regex term with one at a time, the next
+            // found once that one is replaced or cut short, since its matches
+            // don't overlap each other: "an" replaced in "annn" cuts short
+            // the "nn" that starts in it, and another starts after it.
+            let mut hits = BinaryHeap::new();
+            search.each(s, bounds, false, |t, i, j| {
+                hits.push(Reverse((i, t, j)));
                 true
             });
+            if regex {
+                hits = hits
+                    .into_iter()
+                    .filter_map(|Reverse((_, t, _))| {
+                        let (i, j) = search.hit_from(s, bounds, t, 0, None)?;
+                        Some(Reverse((i, t, j)))
+                    })
+                    .collect();
+            }
             if hits.is_empty() {
                 return Piece::Same;
             }
-            hits.sort_unstable();
             let mut new = Vec::new();
             // The end of the last hit replaced, and where it started, so no
             // other hit starts there, not even an empty one.
             let (mut end, mut start) = (0, None);
-            for (i, t, j) in hits {
-                if i < end || start == Some(i) {
-                    continue;
+            while let Some(Reverse((i, t, j))) = hits.pop() {
+                // Every hit pushed starts after the one popped, so this ends.
+                let next = if i < end || start == Some(i) {
+                    search.hit_from(s, bounds, t, end.max(i + 1), None)
+                } else {
+                    new.extend_from_slice(&s[end..i]);
+                    search.expand(s, t, i, rep(t), &mut new);
+                    (end, start) = (j, Some(i));
+                    search.hit_from(s, bounds, t, j.max(i + 1), (j > i).then_some(j))
+                };
+                if let Some((i, j)) = next {
+                    hits.push(Reverse((i, t, j)));
                 }
-                new.extend_from_slice(&s[end..i]);
-                search.expand(s, t, i, rep(t), &mut new);
-                (end, start) = (j, Some(i));
             }
             new.extend_from_slice(&s[end..]);
             Piece::New(new)

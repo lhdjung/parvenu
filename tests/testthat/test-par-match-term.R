@@ -605,6 +605,41 @@ test_that("par_match_term_all() pairs strings with the terms they contain", {
   )
 })
 
+test_that("par_replace_term() searches a regex term again after a cut-short hit", {
+  # The "nn" from the second "n" is cut short by "an", and one after it counts
+  for (fixed in c(TRUE, FALSE)) {
+    expect_identical(
+      par_replace_term("annn", c("an", "nn"), c("<1>", "<2>"), fixed = fixed),
+      "<1><2>"
+    )
+  }
+  expect_identical(
+    par_replace_term("abcd", c("ab", "bcd|d"), c("1", "2"), fixed = FALSE),
+    "1c2"
+  )
+  # Each term once per string, as gsub() with the terms as alternatives
+  set.seed(11)
+  x <- vapply(
+    1:5000,
+    function(i) paste(sample(c("a", "n", "b", " "), 12, TRUE), collapse = ""),
+    ""
+  )
+  terms <- c("an", "nn", "na", "b+", "n b")
+  expect_identical(
+    par_replace_term(x, terms, "#", fixed = FALSE),
+    gsub(paste(terms, collapse = "|"), "#", x, perl = TRUE)
+  )
+  expect_identical(
+    par_replace_term(x, terms[-4], "#"),
+    gsub(paste(terms[-4], collapse = "|"), "#", x, perl = TRUE)
+  )
+  # Empty matches still come once per position
+  expect_identical(
+    par_replace_term("ab", c("a", "x*"), c("1", "-"), fixed = FALSE),
+    "1-b-"
+  )
+})
+
 test_that("whole_word counts marks and joiners as part of a word", {
   x <- c(
     "café au lait", # the accent as a mark of its own
