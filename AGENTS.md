@@ -54,9 +54,10 @@ a history on `figures`. The logo in `man/figures/` does belong on `main`.
 
 ## CI status
 
-CI passed on all four jobs at c77ede8 (2026-10-22), after Ubuntu failures
-from glibc's handling of times that don't exist. The commits after it
+CI passed on all four jobs at 9552c6f (2026-10-25). The commits after it
 were tested only on macOS and haven't been pushed, to save CI minutes
-while more fixes may come. Linux and Windows differ from macOS in ways
-local tests miss, so expect the next push to need watching: check each
-job with `gh run view <id>`.
+while more fixes may come. None of them change `R/` or `src/`, but the
+tests now use all cores where `NOT_CRAN` is `"true"`, as on CI, instead
+of 2. Linux and Windows differ from macOS in ways local tests miss, so
+expect the next push to need watching: check each job with
+`gh run view <id>`.
