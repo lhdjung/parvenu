@@ -1,5 +1,3 @@
-withr::local_options(parvenu.threads = 2) # CRAN allows at most 2 cores
-
 # The definition: every pair of positions whose elements match() the same
 # element of `table`, sorted by `x` and then `table`.
 match_all_base <- function(x_first, table_first) {

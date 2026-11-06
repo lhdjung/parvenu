@@ -1,5 +1,3 @@
-withr::local_options(parvenu.threads = 2) # CRAN allows at most 2 cores
-
 # The definition: the first term that grepl(fixed = TRUE) finds.
 match_term_base <- function(x, terms) {
   vapply(

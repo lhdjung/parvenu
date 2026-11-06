@@ -1,5 +1,3 @@
-withr::local_options(parvenu.threads = 2) # CRAN allows at most 2 cores
-
 test_that("par_find_interval() agrees with findInterval()", {
   set.seed(6)
   x <- c(sample(0:12, 2e4, TRUE) / 2, NA, NaN, Inf, -Inf)

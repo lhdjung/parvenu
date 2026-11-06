@@ -1,5 +1,3 @@
-withr::local_options(parvenu.threads = 2) # CRAN allows at most 2 cores
-
 test_that("par_duplicated() agrees with duplicated() on vectors", {
   set.seed(7)
   n <- 1e5 # long enough to split by hash

@@ -1,5 +1,3 @@
-withr::local_options(parvenu.threads = 2) # CRAN allows at most 2 cores
-
 test_that("the set operations agree with base", {
   set.seed(8)
   n <- 3e4
