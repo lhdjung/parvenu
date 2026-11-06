@@ -9,8 +9,10 @@ with no R package dependencies, in two families:
   name. Results identical to base are the promise, and tests compare
   against base.
 - Text search with Rust's regex and aho-corasick crates, named `par_` plus
-  a stringr verb. These can't give base's results, since the syntax is
-  Rust's, so their docs say where they differ.
+  a stringr verb for one regex (`par_detect()`), and with `_term` for
+  many terms at once (`par_match_term()`). These can't give base's
+  results, since the syntax is Rust's, so their docs say where they
+  differ.
 
 The text family is where threads pay off most: search is bound by the CPU,
 where hashing numbers is bound by memory and collapse is already close to
