@@ -171,6 +171,8 @@ parse_time <- function(x, format, tryFormats, date, nthreads, split = FALSE) {
       try_formats,
       date,
       split,
+      # strptime() reads seconds more strictly from R 4.6.0.
+      getRversion() >= "4.6.0",
       nthreads
     )
     if (!is.null(out) && any(grepl("%[jz]", formats))) {
@@ -278,5 +280,7 @@ local_secs <- function(secs, frac, tz, nthreads) {
   out <- secs + start[i][k]
   hard <- which(!plain[k])
   out[hard] <- as_base(secs[hard])
+  # Infinite seconds, from R 4.6.0.
+  out[is.nan(secs)] <- NaN
   out + frac
 }

@@ -2058,8 +2058,9 @@ enum Part {
 
 /// The parts of `format`; `None` if it has any other, or lacks the year,
 /// or the month and day or the day of the year, where R fills in what is
-/// missing in ways not copied here.
-fn time_format(format: &[u8]) -> Option<Vec<Part>> {
+/// missing in ways not copied here. From R 4.6.0 (`r46`), a digit after
+/// `%OS` is skipped, as in `%OS3`.
+fn time_format(format: &[u8], r46: bool) -> Option<Vec<Part>> {
     use Part::*;
     let mut parts = Vec::new();
     let mut i = 0;
@@ -2076,6 +2077,7 @@ fn time_format(format: &[u8]) -> Option<Vec<Part>> {
             [b'%', b'p', ..] => (AmPm, 2),
             [b'%', b'M', ..] => (Min, 2),
             [b'%', b'S', ..] => (Sec, 2),
+            [b'%', b'O', b'S', d, ..] if r46 && d.is_ascii_digit() => (SecFrac, 4),
             [b'%', b'O', b'S', ..] => (SecFrac, 3),
             [b'%', b'z', ..] => (Offset, 2),
             [b'%', b'%', ..] => (Lit(b'%'), 2),
@@ -2146,11 +2148,17 @@ enum Parsed {
 /// their width, a format's whitespace matches any amount, text after the
 /// format is ignored, numbers take all the digits their width allows, even
 /// past their range, `%H` takes 24 for 24:00:00, the next day, and `%OS`
-/// leaves the seconds at 0 where it reads no number from 0 to 61. `%y`
+/// leaves the seconds at 0 where it reads no number from 0 to 61; from R
+/// 4.6.0 (`r46`), only where it reads no number at all: other numbers make
+/// the time `NA`, but infinite ones `NaN`, and so does a string that is
+/// just `"Inf"` or `"-Inf"`, which is left to R. `%y`
 /// below 69 is 20xx, `%I` is taken modulo 12 and `%p` adds 12 for PM, `%j`
 /// fills in the month and day where they aren't given, and `%z` is an
 /// offset `+hhmm`, subtracted from the time.
-fn parse_time(s: &[u8], parts: &[Part], date: bool) -> Parsed {
+fn parse_time(s: &[u8], parts: &[Part], date: bool, r46: bool) -> Parsed {
+    if r46 && (s == b"Inf" || s == b"-Inf") {
+        return Parsed::Unsupported;
+    }
     // R's `get_number()`.
     let number = |p: &mut usize, from: i32, to: i32, width: u32| -> Option<i32> {
         while s.get(*p) == Some(&b' ') {
@@ -2175,7 +2183,7 @@ fn parse_time(s: &[u8], parts: &[Part], date: bool) -> Parsed {
     let (mut year, mut mon, mut day, mut hour, mut min, mut sec) = (0, 1, 1, 0, 0, 0);
     let (mut yday, mut have_mon, mut have_day) = (None, false, false);
     let (mut hour12, mut pm, mut off) = (false, false, None);
-    let mut psecs = 0.0;
+    let (mut psecs, mut inf) = (0.0, false);
     let mut p = 0;
     let rest = |p: usize| &s[p.min(s.len())..];
     let starts =
@@ -2209,6 +2217,10 @@ fn parse_time(s: &[u8], parts: &[Part], date: bool) -> Parsed {
                         if (0.0..=61.0).contains(&v) {
                             sec = v as i32;
                             psecs = v;
+                        } else if r46 && v.is_infinite() {
+                            inf = true;
+                        } else if r46 {
+                            return Parsed::Na;
                         }
                         p = end;
                     }
@@ -2359,6 +2371,9 @@ fn parse_time(s: &[u8], parts: &[Part], date: bool) -> Parsed {
     if hour > 23 || day > days_in(mon, year) {
         return Parsed::Na;
     }
+    if inf {
+        return Parsed::Time(f64::NAN, 0.0);
+    }
     let days = days_from_civil(year, mon, day);
     let whole = (sec + min * 60 + hour * 3600) as i64 + days * 86400 - off.unwrap_or(0);
     if date {
@@ -2493,12 +2508,13 @@ fn par_parse_time_rs(
     try_formats: bool,
     date: bool,
     split: bool,
+    r46: bool,
     nthreads: i32,
 ) -> Robj {
     let x = unsafe { charsxps(&x) };
     let Some(formats) = unsafe { charsxps(&formats) }
         .iter()
-        .map(|&f| time_format(unsafe { bytes(f) }))
+        .map(|&f| time_format(unsafe { bytes(f) }, r46))
         .collect::<Option<Vec<_>>>()
     else {
         return ().into();
@@ -2514,7 +2530,7 @@ fn par_parse_time_rs(
             na,
             nthreads,
             || (),
-            |_, _, s| match parse_time(s, parts, date) {
+            |_, _, s| match parse_time(s, parts, date, r46) {
                 Parsed::Time(w, f) => [w, f],
                 Parsed::Na => na,
                 Parsed::Unsupported => {
@@ -2540,13 +2556,14 @@ fn par_parse_time_rs(
                 let s = unsafe { utf8(p, &mut buf) };
                 let mut chosen = None;
                 for f in &formats {
-                    match parse_time(s, f, date) {
-                        Parsed::Time(..) => {
+                    match parse_time(s, f, date, r46) {
+                        // `NaN` from infinite seconds doesn't fit, as in R.
+                        Parsed::Time(w, _) if !w.is_nan() => {
                             chosen = Some(f);
                             break;
                         }
                         Parsed::Unsupported => return ().into(),
-                        Parsed::Na => {}
+                        _ => {}
                     }
                 }
                 chosen.map(|f| parse_all(f))

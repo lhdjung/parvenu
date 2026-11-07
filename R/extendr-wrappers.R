@@ -170,7 +170,7 @@ par_replace_term_rs <- function(x, terms, ignore_case, word_start, word_end, fix
 #' `split`, a list of the whole seconds and the fractions instead, for R to
 #' add in base's order after placing the times in a time zone.
 #' @noRd
-par_parse_time_rs <- function(x, formats, try_formats, date, split, nthreads) .Call(wrap__par_parse_time_rs, x, formats, try_formats, date, split, nthreads)
+par_parse_time_rs <- function(x, formats, try_formats, date, split, r46, nthreads) .Call(wrap__par_parse_time_rs, x, formats, try_formats, date, split, r46, nthreads)
 
 #' `rank(x)` for an integer or double vector, `NA` and `NaN` taking ranks
 #' after the others (`na_last` 1), before them (2), or staying `NA` (0).
