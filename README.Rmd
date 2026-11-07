@@ -230,6 +230,22 @@ Most patterns mean the same in Rust's regex crate and in PCRE. The differences:
 - Flags go in the pattern: `(?i)` ignores case.
 - `NA` gives `NA`, where `grepl()` gives `FALSE`.
 
+For example:
+
+```r
+grepl("(a)\\1", "aa")      # TRUE
+par_detect("aa", "(a)\\1") # error: backreferences are not supported
+
+grepl("\\d", "٣", perl = TRUE) # FALSE: an Arabic-Indic three
+par_detect("٣", "\\d")         # TRUE
+
+grepl("b", "ABC", ignore.case = TRUE) # TRUE
+par_detect("ABC", "(?i)b")            # TRUE
+
+grepl("a", NA)      # FALSE
+par_detect(NA, "a") # NA
+```
+
 `fixed = TRUE` finds `pattern` as it is, as in `grepl(fixed = TRUE)`. `pattern` can also have one element per string, as in stringi.
 
 `par_extract()` gives the first match in each string, or a capture group of it, which takes the place of lookaround, and `par_extract_all()` every match. `par_locate()` gives where the first match starts and ends, as `regexpr()` does. `par_replace()` replaces the first match, as `sub()` does, and `par_replace_all()` every match, as `gsub()` does, with `$1` instead of `\\1` for a group. Only R's own thread can make R strings, so the more strings change, the more of the time that takes: where a tenth of a million strings change, it is about 6 times faster than `gsub(perl = TRUE)`, and where all of them do, about twice as fast.

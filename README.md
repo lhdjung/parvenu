@@ -326,6 +326,19 @@ differences:
 - Flags go in the pattern: `(?i)` ignores case.
 - `NA` gives `NA`, where `grepl()` gives `FALSE`.
 
+For example:
+
+```r
+grepl("(a)\\1", "aa")      # TRUE
+par_detect("aa", "(a)\\1") # error: backreferences are not supported
+grepl("\\d", "٣", perl = TRUE) # FALSE: an Arabic-Indic three
+par_detect("٣", "\\d")         # TRUE
+grepl("b", "ABC", ignore.case = TRUE) # TRUE
+par_detect("ABC", "(?i)b")            # TRUE
+grepl("a", NA)      # FALSE
+par_detect(NA, "a") # NA
+```
+
 `fixed = TRUE` finds `pattern` as it is, as in `grepl(fixed = TRUE)`.
 `pattern` can also have one element per string, as in stringi.
 
