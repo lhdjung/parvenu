@@ -201,6 +201,27 @@ don't cover. At a million dates or ten million numbers, on 8 cores:
 `par_rank()` beats `data.table::frank()` (0.61s), while collapse sums groups
 faster than `par_rowsum()` (67ms).
 
+## When the wait matters
+
+Many single calls above take base R a second or less, and a second is a fine wait. The wait grows past that in three ways: two sizes multiply, such as strings and terms; the input runs to tens of millions; or a call repeats, on every keystroke or in every resample. Some cases, on 8 cores (`bench/at-scale.R` and the other scripts in `bench/`):
+
+| Case | Base R | parvenu |
+|---|---|---|
+| 10,000 terms in 100,000 strings | 38s | 4.3ms |
+| A capture group from each of 1 million strings | 18s | 0.21s |
+| Every match in 1 million strings | 11s | 0.21s |
+| Counting matches in 1 million strings | 8.7s | 20ms |
+| 10 million times from web server logs | 53s | 0.48s |
+| 10 million times with milliseconds | 2.6 min | 0.21s |
+| A search box over 10 million rows, per keystroke | 0.40s | 39ms |
+| Spearman's correlation in 1,000 bootstrap resamples of 200,000 rows | 1.6 min | 18s |
+
+- **Large dictionaries.** Medical vocabularies, gene names, and place names run to tens of thousands of terms. Base R's regex engines refuse an alternation that long: PCRE stops near 3,400 terms of 8 letters, so what's left is a loop over the terms, here with `grepl(fixed = TRUE)`. stringi takes an alternation of 10,000 terms, but needs 43s. Both grow with strings times terms, so a corpus of a million abstracts takes them minutes.
+- **Regexes that return more than `TRUE` or `FALSE`.** `regmatches()` on `regexec()` or `gregexpr()` takes 9-18s per million strings, stringi 0.2-5s, and parvenu 0.02-0.21s.
+- **Many times.** A month of logs from a site that serves a few requests a second holds 10 million times such as `"07/Nov/2026:21:43:00 +0000"`, read with `format = "%d/%b/%Y:%H:%M:%S %z"`. Such times repeat within a second, so parsing only `unique()` times and matching them back brings base R down to 17s. Times with milliseconds, as from sensors or event streams, don't repeat; given `format`, base R takes 1.3 minutes instead of 2.6. `data.table::fread()` and readr parse ISO dates as they read, so this concerns times that reach R as text: other formats, or times extracted from log lines.
+- **Interactive search.** A Shiny filter searches again on every keystroke, and a response feels instant only within about a tenth of a second. Half a second is fine for one search, but as a lag after every key it makes the app feel sluggish. Case-insensitive search takes 0.66s in base R and 57ms in parvenu.
+- **Resampling.** A bootstrap of Spearman's correlation ranks both columns in each resample. `data.table::frank()` takes 28s for the same.
+
 ## Use cases
 
 The [use-cases article](https://github.com/lhdjung/parvenu/blob/main/vignettes/articles/use-cases.Rmd) shows each function at work: coding free text with a keyword table, scoring text against a lexicon, filtering logs, validating identifiers, extracting and rewriting parts of strings, lookups and joins on one or several keys, finding duplicates, and binning.
