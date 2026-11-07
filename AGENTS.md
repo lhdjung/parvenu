@@ -54,10 +54,8 @@ a history on `figures`. The logo in `man/figures/` does belong on `main`.
 
 ## CI status
 
-CI passed on all four jobs at 9552c6f (2026-10-25). The commits after it
-were tested only on macOS and haven't been pushed, to save CI minutes
-while more fixes may come. None of them change `R/` or `src/`, but the
-tests now use all cores where `NOT_CRAN` is `"true"`, as on CI, instead
-of 2. Linux and Windows differ from macOS in ways local tests miss, so
-expect the next push to need watching: check each job with
+CI passed on all four jobs at 2186e4d (2026-11-07), on R 4.6.2 as
+"release". R 4.6.0 changed how `strptime()` reads seconds, which only
+CI caught, since R 4.5 is installed locally. Linux and Windows differ
+from macOS in ways local tests miss, so check each job after a push with
 `gh run view <id>`.
