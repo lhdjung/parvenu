@@ -103,7 +103,9 @@ test_that("par_unique() agrees with unique()", {
 
 test_that("par_unique() on data frames gives what subsetting gives", {
   set.seed(2)
-  n <- 3e4
+  # Matrix and data frame columns go to base, which is slow on them, and
+  # the subsetting under test doesn't depend on size.
+  n <- 300
   x <- data.frame(a = sample(5, n, TRUE), b = sample(c("x", "y"), n, TRUE))
   x$m <- matrix(sample(2, 2 * n, TRUE), n)
   x$d <- data.frame(p = sample(2, n, TRUE))
