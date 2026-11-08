@@ -13,15 +13,16 @@ knitr::opts_chunk$set(
 library(parvenu)
 ```
 
-The examples below are small so they run quickly. parvenu pays off at
-100,000 elements or more, where its functions take milliseconds and base R
-takes seconds. For one call, seconds are often a fine wait. They turn into
-minutes with dictionaries of thousands of terms, with capture groups or
-every match from millions of strings, and with tens of millions of
-times. Where a call repeats, as on every keystroke in a Shiny app or in
-every bootstrap resample, even a fraction of a second adds up. The
-[README](https://github.com/lhdjung/parvenu#when-the-wait-matters) has the
-numbers.
+parvenu pays off at 100,000 elements or more, where its functions take
+milliseconds and base R takes seconds or longer: looking up 10,000 terms
+in 100,000 strings takes base R 38s, against 4ms. The examples below are
+small so they run quickly. For one call, seconds are often a fine wait.
+They turn into minutes with dictionaries of thousands of terms, with
+capture groups or every match from millions of strings, and with tens of
+millions of times. Where a call repeats, as on every keystroke in a Shiny
+app or in every bootstrap resample, even a fraction of a second adds up.
+The [README](https://github.com/lhdjung/parvenu#when-the-wait-matters) has
+the numbers.
 
 ## Coding free text with a keyword table
 
