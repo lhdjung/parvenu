@@ -252,14 +252,15 @@ local_secs <- function(secs, frac, tz, nthreads) {
   # The days used, their neighbours, and the offset at both ends of each.
   days <- floor(secs / 86400)
   used <- days[!is.na(days)] |> par_unique(nthreads = nthreads)
-  # About 6 placements per day used: where days barely repeat, base is
-  # faster, placing each time once.
-  if (length(used) > length(secs) / 6) {
-    return(NULL)
-  }
   probe <- c(used - 1, used, used + 1) |>
     par_unique(nthreads = nthreads) |>
     sort()
+  # Base reads and places a time in about the time two placements of day
+  # ends take here, and ties at about 1.5 days probed per time (Europe/Berlin,
+  # 1e4-5e4 times); beyond one day per time, base takes over.
+  if (length(probe) > length(secs)) {
+    return(NULL)
+  }
   ends <- c(probe * 86400, probe * 86400 + 86399)
   offset <- place_in_zone(ends, tz) - ends
   start <- offset[seq_along(probe)]
