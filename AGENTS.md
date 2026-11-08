@@ -40,9 +40,10 @@ rather than following it to the letter.
 
 ## Formatting
 
-R code is formatted with air, which indents by 2 spaces. After editing R
-files from the shell (heredocs, sed), run `air format` on them: the
-pre-commit hook rejects staged R files that air would change.
+Before every commit, run `air format R/ tests/` and, in `src/rust`,
+`cargo fmt`. The pre-commit hook rejects staged R files that air would
+change. air.toml leaves `test_that()` blocks alone, so a test can keep a
+linear pipe flow on one line.
 
 ## README figures
 
