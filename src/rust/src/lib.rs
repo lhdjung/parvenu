@@ -96,6 +96,7 @@ fn par_match<X: Sync, T: Sync, K: Copy + Hash + Eq + Send + Sync>(
     if x.len() <= table.len() / SCAN_RATIO {
         return scan(x, table, xkey, tkey, nomatch, pool);
     }
+    // Hash the table, then look each element up in its bucket's map.
     let maps = pool.install(|| build(table, &tkey));
     let mut out = Integers::new(x.len());
     let slice: &mut [Rint] = &mut out; // threads may share this, not `out`
@@ -136,6 +137,8 @@ fn scan<X: Sync, T: Sync, K: Copy + Hash + Eq + Send + Sync>(
     for (i, v) in x.iter().enumerate().rev() {
         ids.insert(xkey(v), i);
     }
+    // Each chunk's first table position per element of `x`, then the
+    // smallest across chunks.
     let first = pool.install(|| {
         let chunk = table
             .len()
@@ -147,10 +150,9 @@ fn scan<X: Sync, T: Sync, K: Copy + Hash + Eq + Send + Sync>(
             .map(|(c, t)| {
                 let mut first = vec![i32::MAX; x.len()];
                 for (j, v) in t.iter().enumerate() {
-                    if let Some(&i) = ids.get(&tkey(v)) {
-                        if first[i] == i32::MAX {
-                            first[i] = (c * chunk + j) as i32 + 1;
-                        }
+                    match ids.get(&tkey(v)) {
+                        Some(&i) if first[i] == i32::MAX => first[i] = (c * chunk + j) as i32 + 1,
+                        _ => {}
                     }
                 }
                 first
@@ -163,6 +165,7 @@ fn scan<X: Sync, T: Sync, K: Copy + Hash + Eq + Send + Sync>(
                 },
             )
     });
+    // Equal elements of `x` share the position of the first of them.
     let mut out = Integers::new(x.len());
     let slice: &mut [Rint] = &mut out;
     slice.iter_mut().zip(x).for_each(|(o, v)| {
@@ -187,6 +190,7 @@ fn build<T: Sync, K: Copy + Hash + Eq + Send + Sync>(
         }
         return vec![m];
     };
+    // One map per bucket, each filled on its own thread.
     (0..nb)
         .into_par_iter()
         .map(|b| {
@@ -270,6 +274,7 @@ fn mark<X: Sync, K: Copy + Hash + Eq + Send + Sync, V: Copy + Send + Sync>(
     pool: &rayon::ThreadPool,
 ) {
     pool.install(|| {
+        // Small `x`: one map, one thread.
         let Some((nb, runs)) = partition(x, &key) else {
             let mut seen = map(x.len(), x.len());
             let mut mark = |(o, e): (&mut V, &X)| {
@@ -468,19 +473,18 @@ fn pointers_suffice(x: &[usize], table: &[usize], pool: &rayon::ThreadPool) -> b
     let ce = |p: &usize| unsafe { Rf_getCharCE(*p as SEXP) };
     // The threads read the strings themselves, as par_detect_rs() does.
     // Reading each one is a cache miss, so this scans the shorter side.
+    let shorter = if x.len() < table.len() { x } else { table };
     pool.install(|| {
+        if shorter.par_iter().with_min_len(MATCH_PER_THREAD).all(ascii) {
+            return true;
+        }
         let both = || x.par_iter().chain(table).with_min_len(MATCH_PER_THREAD);
-        if x.len() < table.len() { x } else { table }
-            .par_iter()
-            .with_min_len(MATCH_PER_THREAD)
-            .all(ascii)
-            || {
-                // Encodings seen, as bits: 1 native, 2 UTF-8, 4 anything else.
-                let seen = both()
-                    .map(|p| 1u8 << ce(p).min(2))
-                    .reduce(|| 0, |a, b| a | b);
-                seen & 4 == 0 && (seen != 3 || both().all(|p| ce(p) == 1 || ascii(p)))
-            }
+        // Encodings seen, as bits: 1 native, 2 UTF-8, 4 anything else.
+        let seen = both()
+            .map(|p| 1u8 << ce(p).min(2))
+            .reduce(|| 0, |a, b| a | b);
+        // Native and UTF-8 mixed: fine only if every native one is ASCII.
+        seen & 4 == 0 && (seen != 3 || both().all(|p| ce(p) == 1 || ascii(p)))
     })
 }
 
@@ -569,6 +573,7 @@ enum Col<'a> {
 }
 
 impl Col<'_> {
+    /// Element `i` as 64 bits that compare as `par_match()` would.
     fn key(&self, i: usize) -> u64 {
         match self {
             Col::Int(v) => v[i] as u32 as u64,
@@ -585,20 +590,17 @@ fn columns<'a>(cols: &'a [Robj], day: &[Rbool]) -> Vec<Col<'a>> {
         .enumerate()
         .map(|(j, c)| {
             if let Some(v) = c.as_integer_slice() {
-                Col::Int(v)
-            } else if let Some(v) = c.as_real_slice() {
-                if day.get(j).is_some_and(|d| d.is_true()) {
-                    Col::Day(v)
-                } else {
-                    Col::Dbl(v)
-                }
-            } else {
-                assert!(
-                    c.is_string(),
-                    "columns must be integer, double, or character"
-                );
-                Col::Chr(unsafe { charsxps(c) })
+                return Col::Int(v);
             }
+            if let Some(v) = c.as_real_slice() {
+                let is_day = day.get(j).is_some_and(|d| d.is_true());
+                return if is_day { Col::Day(v) } else { Col::Dbl(v) };
+            }
+            assert!(
+                c.is_string(),
+                "columns must be integer, double, or character"
+            );
+            Col::Chr(unsafe { charsxps(c) })
         })
         .collect()
 }
@@ -614,6 +616,7 @@ struct Row<'a> {
     h: u64,
 }
 
+/// Row `i` with its hash, mixed from every column's key.
 fn row<'a>(cols: &'a Vec<Col<'a>>, i: u32) -> Row<'a> {
     let h = cols.iter().fold(0u64, |h, c| {
         (h.rotate_left(5) ^ c.key(i as usize)).wrapping_mul(0x517CC1B727220A95)
@@ -661,6 +664,7 @@ fn par_match_rows_rs(x: List, table: List, day: &[Rbool], nomatch: Rint, nthread
     let (x, table): (Vec<Robj>, Vec<Robj>) = (x.values().collect(), table.values().collect());
     let (xc, tc) = (columns(&x, day), columns(&table, day));
     let pool = pool(nthreads);
+    // Dates too far out to match by day go to base.
     let far = |c: &Col| match c {
         Col::Day(v) => v
             .par_iter()
@@ -711,10 +715,8 @@ const REGEX_PER_THREAD: usize = 2500;
 fn regex(pattern: &str) -> extendr_api::Result<regex::bytes::Regex> {
     static LAST: Mutex<Option<(String, regex::bytes::Regex)>> = Mutex::new(None);
     let mut last = LAST.lock().unwrap_or_else(|e| e.into_inner());
-    if let Some((p, re)) = last.as_ref() {
-        if p == pattern {
-            return Ok(re.clone());
-        }
+    if let Some((_, re)) = last.as_ref().filter(|(p, _)| p == pattern) {
+        return Ok(re.clone());
     }
     let re = regex::bytes::Regex::new(pattern).map_err(|e| Error::Other(e.to_string()))?;
     *last = Some((pattern.to_string(), re.clone()));
@@ -738,6 +740,7 @@ fn per_string<T: Clone + Send + Sync, S>(
     f: impl Fn(&mut S, usize, &[u8]) -> T + Sync,
 ) {
     let na_ptr = unsafe { R_NaString } as usize;
+    // One chunk, from position `start` of `x`.
     let run = |start: usize, out: &mut [T], x: &[usize]| {
         let mut s = init();
         let mut buf = Vec::new();
@@ -752,6 +755,7 @@ fn per_string<T: Clone + Send + Sync, S>(
     if x.len() < 2 * REGEX_PER_THREAD {
         return run(0, out, x);
     }
+    // 4 chunks per thread, so threads that finish early take more.
     pool(nthreads).install(|| {
         let nt = rayon::current_num_threads().min(x.len() / REGEX_PER_THREAD);
         let chunk = x.len().div_ceil(4 * nt);
@@ -782,6 +786,7 @@ fn patterns(pattern: &Robj, fixed: bool, nthreads: i32) -> extendr_api::Result<P
             which: None,
         });
     }
+    // Number the distinct patterns in order of first appearance.
     let mut distinct = Vec::new();
     let which: Option<Vec<u32>> = (pattern.len() > 1).then(|| {
         let mut ids = HashMap::default();
@@ -799,6 +804,7 @@ fn patterns(pattern: &Robj, fixed: bool, nthreads: i32) -> extendr_api::Result<P
         distinct.push(pattern[0]);
     }
     let na_ptr = unsafe { R_NaString } as usize;
+    // A pattern's regex source: escaped if `fixed`, `None` for `NA`.
     let source = |p: usize| -> std::result::Result<Option<String>, String> {
         if p == na_ptr {
             return Ok(None);
@@ -810,6 +816,7 @@ fn patterns(pattern: &Robj, fixed: bool, nthreads: i32) -> extendr_api::Result<P
             p.to_string()
         }))
     };
+    // One pattern uses the cache in `regex()`; several compile in parallel.
     let res: Vec<Option<Re>> = if distinct.len() == 1 {
         let p = source(distinct[0]).map_err(Error::Other)?;
         vec![p.map(|p| regex(&p)).transpose()?]
@@ -859,6 +866,7 @@ fn per_pattern<T: Clone + Send + Sync>(
             },
         )
     };
+    // Few distinct patterns: run in place, unsorted.
     let which = match &p.which {
         Some(w) if p.res.len() >= GROUP_MIN => w,
         w => return run(out, x, w.as_deref().unwrap_or(&[])),
@@ -877,6 +885,7 @@ fn per_pattern<T: Clone + Send + Sync>(
         order[start[w as usize]] = i as u32;
         start[w as usize] += 1;
     }
+    // Run on the strings in that order, then put the results back.
     let pool = pool(nthreads);
     let (xs, ids): (Vec<usize>, Vec<u32>) = pool.install(|| {
         order
@@ -1066,6 +1075,7 @@ fn par_extract_rs(
         });
         return strings(x, out);
     }
+    // Several groups: a vector of pieces per string.
     let na = vec![Piece::Na; group.len()];
     let mut out = vec![na.clone(); x.len()];
     per_pattern(&mut out, x, &p, na, nthreads, |re, s| {
@@ -1074,6 +1084,7 @@ fn par_extract_rs(
             Some(c) => group.iter().map(|&g| span(c.get(g as usize))).collect(),
         }
     });
+    // Column-major, as R's matrices are.
     let n = x.len();
     let res: Robj = Strings::new(n * group.len()).into();
     for (i, (pieces, &p)) in out.into_iter().zip(x).enumerate() {
@@ -1109,11 +1120,13 @@ fn par_locate_rs(
             re.captures(s).and_then(|c| c.get(g))
         };
         m.map_or([NA_INT; 2], |m| {
+            // Characters: bytes that aren't UTF-8 continuation bytes.
             let chars = |s: &[u8]| s.iter().filter(|&&b| b & 0xC0 != 0x80).count() as i32;
             let start = chars(&s[..m.start()]) + 1;
             [start, start + chars(m.as_bytes()) - 1]
         })
     });
+    // All starts, then all ends: a two-column matrix for R.
     let col = |k: usize| out.iter().map(move |o| o[k]);
     Ok(Integers::from_values(
         col(0).chain(col(1)).collect::<Vec<_>>(),
@@ -1142,6 +1155,7 @@ fn par_locate_all_rs(
     let mut out: Vec<Option<Vec<[i32; 2]>>> = vec![None; x.len()];
     per_pattern(&mut out, x, &p, None, nthreads, |re, s| {
         let whole = |m: &regex::bytes::Match| !splits_char(s, m.start(), m.end());
+        // Byte spans of the matches, or of the group in each.
         let spans: Vec<Option<(usize, usize)>> = if g == 0 {
             re.find_iter(s)
                 .filter(whole)
@@ -1265,7 +1279,9 @@ fn par_replace_rs(
     let expand = !fixed && rep.contains(&b'$');
     per_pattern(&mut out, x, &p, Piece::Na, nthreads, |re, s| {
         let mut new = Vec::new();
+        // End of the last match replaced; `None` if none was.
         let mut last = None;
+        // Copies the text before match `m`, or returns `false` to skip it.
         let mut put = |new: &mut Vec<u8>, m: regex::bytes::Match| -> bool {
             if splits_char(s, m.start(), m.end()) {
                 return false;
@@ -1276,23 +1292,26 @@ fn par_replace_rs(
         };
         if expand {
             for c in re.captures_iter(s) {
-                if put(&mut new, c.get(0).unwrap()) {
-                    c.expand(rep, &mut new);
-                    if !all {
-                        break;
-                    }
+                if !put(&mut new, c.get(0).unwrap()) {
+                    continue;
+                }
+                c.expand(rep, &mut new);
+                if !all {
+                    break;
                 }
             }
         } else {
             for m in re.find_iter(s) {
-                if put(&mut new, m) {
-                    new.extend_from_slice(rep);
-                    if !all {
-                        break;
-                    }
+                if !put(&mut new, m) {
+                    continue;
+                }
+                new.extend_from_slice(rep);
+                if !all {
+                    break;
                 }
             }
         }
+        // Then the text after the last match.
         match last {
             None => Piece::Same,
             Some(last) => {
@@ -1341,10 +1360,9 @@ fn compile_terms(
     let copy = terms.duplicate();
     let key = (ignore_case, fixed, (!fixed).then_some(bounds));
     let mut last = LAST.lock().unwrap_or_else(|e| e.into_inner());
-    if let Some(Last(t, k, m)) = last.as_ref() {
-        if *k == key && unsafe { charsxps(t) } == p {
-            return Ok(m.clone());
-        }
+    let same = |Last(t, k, _): &&Last| *k == key && unsafe { charsxps(t) } == p;
+    if let Some(Last(_, _, m)) = last.as_ref().filter(same) {
+        return Ok(m.clone());
     }
     let err = |e: &dyn std::fmt::Display| Error::Other(e.to_string());
     let m = Arc::new(if fixed {
@@ -1371,6 +1389,7 @@ fn compile_terms(
             ignore_case,
         )
     } else {
+        // Each term's regex source, wrapped in word bounds if asked.
         let src = p
             .iter()
             .map(|&p| {
@@ -1394,6 +1413,7 @@ fn compile_terms(
                 Ok(format!("{before}(?:{t}{end}){after}"))
             })
             .collect::<extendr_api::Result<Vec<_>>>()?;
+        // A regex per term, to find its hits; the set says which terms match.
         let res = src
             .iter()
             .map(|t| {
@@ -1503,6 +1523,8 @@ impl<'a> Search<'a> {
                 // "won|won't"; list the longer alternative first.
                 let check = may_join(s, bounds);
                 for t in set.matches(s).iter() {
+                    // Without `every` or an apostrophe to check, the set's
+                    // answer is enough.
                     if !every && !check {
                         if !f(t as u32, 0, 0) {
                             return;
@@ -1557,6 +1579,7 @@ impl<'a> Search<'a> {
         let t = t as usize;
         let re = self.res[t].get_or_insert_with(|| regexes[t].clone());
         let check = may_join(s, bounds);
+        // Skip matches that split a character, join a word, or repeat `avoid`.
         let mut at = from;
         while at <= s.len() {
             let m = re.find_at(s, at)?;
@@ -1587,7 +1610,7 @@ fn may_join(s: &[u8], bounds: Bounds) -> bool {
 fn lower(s: &[u8], buf: &mut Vec<u8>, at: &mut Vec<u32>) {
     buf.clear();
     at.clear();
-    let mut i = 0;
+    let mut i = 0; // position in `s`
     for chunk in s.utf8_chunks() {
         for c in chunk.valid().chars() {
             for l in c.to_lowercase() {
@@ -1597,6 +1620,7 @@ fn lower(s: &[u8], buf: &mut Vec<u8>, at: &mut Vec<u32>) {
             at.resize(buf.len(), i as u32);
             i += c.len_utf8();
         }
+        // Bytes that aren't UTF-8 are kept as they are.
         for &b in chunk.invalid() {
             buf.push(b);
             at.push(i as u32);
@@ -1643,6 +1667,7 @@ impl Bounds {
         let hit = &s[i..j];
         let before = &s[..i];
         let after = &s[j..];
+        // An apostrophe joins only if word characters are on both sides.
         let start = || match last_char(before) {
             Some(c @ ('\'' | '\u{2019}')) => {
                 is_word(first_char(hit)) && is_word(last_char(&before[..i - c.len_utf8()]))
@@ -1691,6 +1716,7 @@ fn par_match_term_rs(
         nthreads,
         || Search::new(&m),
         |search, _, s| {
+            // The lowest term index found; term 0 can't be beaten, so stop.
             let mut best = u32::MAX;
             search.each(s, bounds, false, |t, _, _| {
                 best = best.min(t);
@@ -1729,6 +1755,7 @@ fn par_count_term_rs(
     };
     let m = compile_terms(&terms, ignore_case, bounds, fixed)?;
     let x = unsafe { charsxps(&x) };
+    // Weighted: sum the weights of the hits.
     if let Some(w) = weights.as_real_slice() {
         let mut out = Doubles::new(x.len());
         per_string(
@@ -1748,6 +1775,7 @@ fn par_count_term_rs(
         );
         return Ok(out.into());
     }
+    // Unweighted: count the hits.
     let mut out = Integers::new(x.len());
     per_string(
         &mut out,
@@ -1818,6 +1846,8 @@ fn par_replace_term_rs(
                 hits.push(Reverse((i, t, j)));
                 true
             });
+            // For regexes, `each()` gave only which terms match: find their
+            // first hits.
             if regex {
                 hits = hits
                     .into_iter()
@@ -1836,6 +1866,9 @@ fn par_replace_term_rs(
             let (mut end, mut start) = (0, None);
             while let Some(Reverse((i, t, j))) = hits.pop() {
                 // Every hit pushed starts after the one popped, so this ends.
+                // A hit overlapping the last replaced one is skipped; else
+                // it is replaced. Either way, a regex term's next hit is
+                // queued.
                 let next = if i < end || start == Some(i) {
                     search.hit_from(s, bounds, t, end.max(i + 1), None)
                 } else {
@@ -1948,6 +1981,7 @@ fn par_match_term_all_rs(
                 t.push(i);
                 true
             });
+            // Sorted hits, run-length encoded into (term, count).
             t.sort_unstable();
             let mut pairs: Vec<(u32, u32)> = Vec::new();
             for i in t {
@@ -1963,6 +1997,7 @@ fn par_match_term_all_rs(
     if total > i32::MAX as usize {
         return Err(Error::Other("More than 2^31 - 1 pairs match.".into()));
     }
+    // Flatten into three columns.
     let (mut xs, mut ts, mut ns) = (
         Vec::with_capacity(total),
         Vec::with_capacity(total),
@@ -2005,6 +2040,7 @@ fn par_find_interval_rs(
             return Rint::na();
         }
         let closed = |edge: f64| rightmost_closed && x == edge;
+        // Binary search, then base's adjustments at either end.
         let i = if left_open {
             match vec.partition_point(|&v| v < x) {
                 0 if all_inside || closed(vec[0]) => 1,
@@ -2104,6 +2140,7 @@ fn time_format(format: &[u8], r46: bool) -> Option<Vec<Part>> {
         parts.push(part);
         i += len;
     }
+    // A year, and a month and day or a day of the year.
     let has = |f: fn(&Part) -> bool| parts.iter().any(f);
     (has(|p| matches!(p, Year | Year2))
         && ((has(|p| matches!(p, Month | MonthName)) && has(|p| matches!(p, Day)))
@@ -2180,14 +2217,16 @@ fn parse_time(s: &[u8], parts: &[Part], date: bool, r46: bool) -> Parsed {
         }
         (from..=to).contains(&val).then_some(val)
     };
+    // The fields read so far, R's defaults where a format lacks them.
     let (mut year, mut mon, mut day, mut hour, mut min, mut sec) = (0, 1, 1, 0, 0, 0);
     let (mut yday, mut have_mon, mut have_day) = (None, false, false);
     let (mut hour12, mut pm, mut off) = (false, false, None);
     let (mut psecs, mut inf) = (0.0, false);
-    let mut p = 0;
+    let mut p = 0; // position in `s`
     let rest = |p: usize| &s[p.min(s.len())..];
     let starts =
         |p: usize, w: &[u8]| rest(p).len() >= w.len() && rest(p)[..w.len()].eq_ignore_ascii_case(w);
+    // Read each part; plain numeric fields fall through to the end.
     for part in parts {
         let field = match part {
             Part::Space => {
@@ -2284,6 +2323,7 @@ fn parse_time(s: &[u8], parts: &[Part], date: bool, r46: bool) -> Parsed {
                     _ => return Parsed::Na,
                 };
                 p += 1;
+                // Exactly 4 digits, hhmm.
                 let (mut val, mut n) = (0i64, 0);
                 while n < 4 && s.get(p).is_some_and(|c| c.is_ascii_digit()) {
                     val = val * 10 + (s[p] - b'0') as i64;
@@ -2305,6 +2345,7 @@ fn parse_time(s: &[u8], parts: &[Part], date: bool, r46: bool) -> Parsed {
             Part::Min => (&mut min, number(&mut p, 0, 59, 2)),
             Part::Sec => (&mut sec, number(&mut p, 0, 61, 2)),
         };
+        // A plain numeric field: store it, or fail.
         match field {
             (f, Some(v)) => *f = v,
             (_, None) => return Parsed::Na,
@@ -2358,6 +2399,7 @@ fn parse_time(s: &[u8], parts: &[Part], date: bool, r46: bool) -> Parsed {
     if sec > 60 {
         return Parsed::Na;
     }
+    // 24:00:00 rolls over to the next day.
     if hour == 24 && min == 0 && sec == 0 {
         hour = 0;
         day += 1;
@@ -2391,7 +2433,7 @@ fn parse_time(s: &[u8], parts: &[Part], date: bool, r46: bool) -> Parsed {
 }
 
 /// Days from 1970-01-01 to a date of the proleptic Gregorian calendar, as
-/// R counts them.
+/// R counts them. Howard Hinnant's algorithm, with years starting in March.
 fn days_from_civil(year: i32, mon: i32, day: i32) -> i64 {
     let y = year as i64 - (mon <= 2) as i64;
     let era = y.div_euclid(400);
@@ -2439,6 +2481,7 @@ fn strtod(s: &[u8], mut p: usize) -> Result<Option<(f64, usize)>, ()> {
     if rest.len() > 2 && rest[0] == b'0' && (rest[1] | 0x20) == b'x' {
         return Err(());
     }
+    // Digits before and after the point, as one integer and an exponent.
     let (mut ans, mut digits, mut expn) = (0.0f64, 0, 0i32);
     while at(p).is_ascii_digit() {
         ans = 10.0 * ans + (at(p) - b'0') as f64;
@@ -2464,11 +2507,9 @@ fn strtod(s: &[u8], mut p: usize) -> Result<Option<(f64, usize)>, ()> {
         p += 1 + sign_len;
         let mut n = 0;
         while at(p).is_ascii_digit() {
-            n = if n < 9999 {
-                n * 10 + (at(p) - b'0') as i32
-            } else {
-                n
-            };
+            if n < 9999 {
+                n = n * 10 + (at(p) - b'0') as i32;
+            }
             p += 1;
         }
         expn += exp_sign * n;
@@ -2542,36 +2583,23 @@ fn par_parse_time_rs(
         out
     };
     let unsupported = || unsupported.load(std::sync::atomic::Ordering::Relaxed);
+    // `None` where no format fits.
     let out = if !try_formats {
         Some(parse_all(&formats[0]))
     } else if date {
-        // Empty strings count as `NA` here.
+        // Dates try the formats on the first string; empty ones count as `NA`.
         let first = x
             .iter()
             .find(|&&p| p != na_ptr && unsafe { !bytes(p).is_empty() });
-        match first {
+        match first.map(|&p| date_format(p, &formats, r46)) {
             None => Some(vec![na; x.len()]),
-            Some(&p) => {
-                let mut buf = Vec::new();
-                let s = unsafe { utf8(p, &mut buf) };
-                let mut chosen = None;
-                for f in &formats {
-                    match parse_time(s, f, date, r46) {
-                        // `NaN` from infinite seconds doesn't fit, as in R.
-                        Parsed::Time(w, _) if !w.is_nan() => {
-                            chosen = Some(f);
-                            break;
-                        }
-                        Parsed::Unsupported => return ().into(),
-                        _ => {}
-                    }
-                }
-                chosen.map(|f| parse_all(f))
-            }
+            Some(Err(())) => return ().into(),
+            Some(Ok(f)) => f.map(parse_all),
         }
     } else if x.iter().all(|&p| p == na_ptr) {
         Some(vec![na; x.len()])
     } else {
+        // Times take the first format that reads every string.
         formats.iter().find_map(|f| {
             let out = parse_all(f);
             let all = pool(nthreads).install(|| {
@@ -2593,6 +2621,22 @@ fn par_parse_time_rs(
         Some(out) if !unsupported() => Doubles::from_values(out.iter().map(|[w, f]| w + f)).into(),
         _ => ().into(),
     }
+}
+
+/// The first of `formats` that reads the string at `p` as a date, or
+/// `None`; `Err` where R must decide.
+fn date_format(p: usize, formats: &[Vec<Part>], r46: bool) -> Result<Option<&[Part]>, ()> {
+    let mut buf = Vec::new();
+    let s = unsafe { utf8(p, &mut buf) };
+    for f in formats {
+        match parse_time(s, f, true, r46) {
+            // `NaN` from infinite seconds doesn't fit, as in R.
+            Parsed::Time(w, _) if !w.is_nan() => return Ok(Some(f)),
+            Parsed::Unsupported => return Err(()),
+            _ => {}
+        }
+    }
+    Ok(None)
 }
 
 /// `rank(x)` for an integer or double vector, `NA` and `NaN` taking ranks
@@ -2624,6 +2668,8 @@ fn par_rank_rs(x: Robj, ties: &str, na_last: i32, nthreads: i32) -> Robj {
     }
 }
 
+/// `par_rank_rs()` for any element type, by a key that sorts as R does,
+/// `None` for `NA`.
 fn rank<T: Sync, K: Ord + Copy + Send + Sync>(
     x: &[T],
     key: impl Fn(&T) -> Option<K> + Sync,
@@ -2674,6 +2720,7 @@ fn rank<T: Sync, K: Ord + Copy + Send + Sync>(
             })
         });
     };
+    // Ranks as doubles first, `NA` where not ranked yet.
     let mut out = vec![NA_REAL; x.len()];
     match ties {
         "average" => ranks(&mut out, &|i, j, _| (i + j + 1) as f64 / 2.0),
@@ -2682,6 +2729,7 @@ fn rank<T: Sync, K: Ord + Copy + Send + Sync>(
         "min" => ranks(&mut out, &|i, _, _| (i + 1) as f64),
         _ => ranks(&mut out, &|_, j, _| j as f64),
     }
+    // `NA`s ranked in their order, after or before the others.
     if na_last != 0 {
         let first = if na_last == 1 { sorted.len() } else { 0 };
         for (t, &i) in nas.iter().enumerate() {
@@ -2689,6 +2737,7 @@ fn rank<T: Sync, K: Ord + Copy + Send + Sync>(
         }
     }
     sorted.clear();
+    // Only "average" can give fractions; the others return integers, as R.
     if ties == "average" {
         return Doubles::from_values(out).into();
     }
@@ -2752,6 +2801,7 @@ fn par_rowsum_rs(
         });
         out
     }
+    // Check the codes up front, since `sums()` writes by them unchecked.
     let pool = pool(nthreads);
     let ok = pool.install(|| {
         codes
@@ -2767,28 +2817,25 @@ fn par_rowsum_rs(
         // Which of two NaNs an addition keeps is up to the compiler, so
         // it is chosen here; with one, the addition keeps it.
         let add = |s: &mut f64, v: f64| {
-            if !na_rm || !v.is_nan() {
-                if !(s.is_nan() && v.is_nan()) {
-                    *s += v
-                } else if !nan_first {
-                    *s = v
-                }
+            if na_rm && v.is_nan() {
+                return;
+            }
+            if !(s.is_nan() && v.is_nan()) {
+                *s += v
+            } else if !nan_first {
+                *s = v
             }
         };
         Doubles::from_values(sums(v, codes, ng, 0.0, add, &pool)).into()
     } else {
+        // `NA` sticks; overflow gives `NA`, as does a sum of `i32::MIN`.
         let add = |s: &mut i32, v: i32| {
             if v == NA_INT {
                 if !na_rm {
                     *s = NA_INT
                 }
             } else if *s != NA_INT {
-                let sum = *s as i64 + v as i64;
-                *s = if sum < i32::MIN as i64 || sum > i32::MAX as i64 {
-                    NA_INT
-                } else {
-                    sum as i32
-                }
+                *s = s.checked_add(v).unwrap_or(NA_INT)
             }
         };
         let v = x.as_integer_slice().unwrap();
@@ -2826,6 +2873,7 @@ fn par_approx_rs(
         if v > x[j] {
             return yright;
         }
+        // Binary search for x[i] <= v <= x[j], j = i + 1.
         while i + 1 < j {
             let ij = (i + j) / 2;
             if v < x[ij] {
