@@ -1,0 +1,70 @@
+Largest alternation base R compiles (PCRE), in terms of 8 letters
+about 3425 
+
+1e5 strings, 1e4 terms
+# A tibble: 3 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 base_loop     37.6s
+2 stringi       42.9s
+3 parvenu       4.3ms
+
+1e7 access-log times in a month, at second resolution
+# A tibble: 3 × 2
+  expression    median
+  <bch:expr>  <bch:tm>
+1 base             53s
+2 base_unique    16.5s
+3 parvenu      482.8ms
+
+1e7 ISO times with milliseconds, all distinct
+# A tibble: 3 × 2
+  expression    median
+  <bch:expr>  <bch:tm>
+1 base           2.55m
+2 base_format    1.32m
+3 parvenu     205.88ms
+
+(The two sections below ran again on their own, after the first run hit its time limit.)
+A search box over 1e7 rows: one search per keystroke
+# A tibble: 4 × 2
+  expression            median
+  <bch:expr>          <bch:tm>
+1 base_fixed           398.1ms
+2 base_ignore_case       662ms
+3 parvenu_fixed         38.8ms
+4 parvenu_ignore_case   57.4ms
+
+Spearman's correlation in 1000 bootstrap resamples of 2e5 rows
+# A tibble: 3 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 base          1.64m
+2 data.table   28.36s
+3 parvenu      18.27s
+
+R version 4.5.2 (2025-10-31)
+Platform: aarch64-apple-darwin20
+Running under: macOS Tahoe 26.5.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: Europe/Zurich
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] parvenu_0.0.0.9001
+
+loaded via a namespace (and not attached):
+ [1] compiler_4.5.2      bench_1.1.4         cli_3.6.6          
+ [4] tools_4.5.2         pillar_1.11.1       glue_1.8.1         
+ [7] vctrs_0.7.3         stringi_1.8.9       data.table_1.18.2.1
+[10] lifecycle_1.0.5     rlang_1.3.0        
