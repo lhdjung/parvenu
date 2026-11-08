@@ -653,6 +653,18 @@ fn key2<'a>(c: &'a [Col<'a>]) -> impl Fn(&u32) -> (u64, u64) + Sync + 'a {
     move |&i| (c[0].key(i as usize), c[1].key(i as usize))
 }
 
+/// Whether a column of Dates has one too far out to match by day, which
+/// then goes to base.
+fn far_day(c: &Col) -> bool {
+    match c {
+        Col::Day(v) => v
+            .par_iter()
+            .with_min_len(MATCH_PER_THREAD)
+            .any(|v| v.is_finite() && v.abs() > 1e10),
+        _ => false,
+    }
+}
+
 /// `match()` on rows: for each row of `x`, the first row of `table` equal
 /// to it in every column, or `nomatch`. Both are lists of columns, which R
 /// prepares as `Col` describes; `day` marks columns of Dates. Returns
@@ -664,15 +676,7 @@ fn par_match_rows_rs(x: List, table: List, day: &[Rbool], nomatch: Rint, nthread
     let (x, table): (Vec<Robj>, Vec<Robj>) = (x.values().collect(), table.values().collect());
     let (xc, tc) = (columns(&x, day), columns(&table, day));
     let pool = pool(nthreads);
-    // Dates too far out to match by day go to base.
-    let far = |c: &Col| match c {
-        Col::Day(v) => v
-            .par_iter()
-            .with_min_len(MATCH_PER_THREAD)
-            .any(|v| v.is_finite() && v.abs() > 1e10),
-        _ => false,
-    };
-    if pool.install(|| xc.iter().chain(&tc).any(far)) {
+    if pool.install(|| xc.iter().chain(&tc).any(far_day)) {
         return ().into();
     }
     let (nx, nt) = (x[0].len(), table[0].len());
@@ -705,6 +709,140 @@ fn par_duplicated_rows_rs(x: List, from_last: bool, nthreads: i32) -> Logicals {
         return duplicated(&rows, key2(&xc), from_last, &pool);
     }
     duplicated(&rows, |&i| row(&xc, i), from_last, &pool)
+}
+
+/// The group of each element of `x` and of `table`, as the 1-based
+/// position of the first equal element of `table`; 0 for an element of
+/// `x` with none. The table is hashed once, as in `build()`, and each of
+/// its elements gets its group as it goes into the map, so none is looked
+/// up again, as `par_match(table, table)` would.
+fn groups<X: Sync, T: Sync, K: Copy + Hash + Eq + Send + Sync>(
+    x: &[X],
+    table: &[T],
+    xkey: impl Fn(&X) -> K + Sync,
+    tkey: impl Fn(&T) -> K + Sync,
+    pool: &rayon::ThreadPool,
+) -> (Vec<i32>, Vec<i32>) {
+    let mut tg = vec![0i32; table.len()];
+    let maps = pool.install(|| {
+        let Some((nb, runs)) = partition(table, &tkey) else {
+            let mut m = map(table.len(), table.len());
+            for (i, (v, g)) in table.iter().zip(&mut tg).enumerate() {
+                *g = *m.entry(tkey(v)).or_insert(i as i32 + 1);
+            }
+            return vec![m];
+        };
+        let out = Shared(tg.as_mut_ptr());
+        (0..nb)
+            .into_par_iter()
+            .map(|b| {
+                let n = runs.iter().map(|r| r[b].len()).sum();
+                let mut m = map(n, table.len());
+                // Runs are in table order, so the first position wins.
+                for &(k, i) in runs.iter().flat_map(|r| &r[b]) {
+                    let g = *m.entry(k).or_insert(i);
+                    // Each position is in one bucket only.
+                    unsafe { *out.get().add(i as usize - 1) = g }
+                }
+                m
+            })
+            .collect::<Vec<_>>()
+    });
+    let mut xg = vec![0i32; x.len()];
+    pool.install(|| {
+        xg.par_iter_mut()
+            .zip(x)
+            .with_min_len(MATCH_PER_THREAD)
+            .for_each(|(g, v)| {
+                let k = xkey(v);
+                *g = *maps[bucket(&k, maps.len())].get(&k).unwrap_or(&0);
+            })
+    });
+    (xg, tg)
+}
+
+/// Every pair of positions in `x` and `table` in the same group, from
+/// `groups()`, sorted by `x` and then by `table`: a list of two integer
+/// vectors, `x` and `table`. The positions in `table` are sorted by group
+/// with a counting sort, and each element of `x` pairs with its group's
+/// run, written on the threads straight into the result.
+fn pairs(xg: &[i32], tg: &[i32], pool: &rayon::ThreadPool) -> extendr_api::Result<Robj> {
+    // Group 0, no match, stays empty.
+    let mut size = vec![0usize; tg.len() + 1];
+    for &g in tg {
+        size[g as usize] += 1;
+    }
+    let mut start = Vec::with_capacity(size.len());
+    let mut sum = 0;
+    for &n in &size {
+        start.push(sum);
+        sum += n;
+    }
+    let mut by_group = vec![0i32; tg.len()];
+    let mut next = start.clone();
+    for (i, &g) in tg.iter().enumerate() {
+        by_group[next[g as usize]] = i as i32 + 1;
+        next[g as usize] += 1;
+    }
+
+    // Where each element of `x` starts in the result.
+    let mut at = Vec::with_capacity(xg.len());
+    let mut total = 0usize;
+    for &g in xg {
+        at.push(total);
+        total += size[g as usize];
+    }
+    if total > i32::MAX as usize {
+        return Err(Error::Other("More than 2^31 - 1 pairs match.".into()));
+    }
+
+    let (mut xs, mut ts) = (Integers::new(total), Integers::new(total));
+    let (xo, to) = (Shared(xs.as_mut_ptr()), Shared(ts.as_mut_ptr()));
+    pool.install(|| {
+        (0..xg.len())
+            .into_par_iter()
+            .with_min_len(MATCH_PER_THREAD)
+            .for_each(|i| {
+                let g = xg[i] as usize;
+                let run = &by_group[start[g]..start[g] + size[g]];
+                for (j, &t) in run.iter().enumerate() {
+                    // Each element of `x` has its own stretch of the result.
+                    unsafe {
+                        *xo.get().add(at[i] + j) = Rint::from(i as i32 + 1);
+                        *to.get().add(at[i] + j) = Rint::from(t);
+                    }
+                }
+            })
+    });
+    Ok(List::from_names_and_values(["x", "table"], [xs, ts])?.into())
+}
+
+/// `par_match_rows_all()`: every pair of equal rows, as `pairs()` gives
+/// them, from columns prepared as for `par_match_rows_rs()`. Returns `NULL`
+/// for Dates beyond 1e10 days, as that does.
+/// @noRd
+#[extendr]
+fn par_match_rows_all_rs(
+    x: List,
+    table: List,
+    day: &[Rbool],
+    nthreads: i32,
+) -> extendr_api::Result<Robj> {
+    let (x, table): (Vec<Robj>, Vec<Robj>) = (x.values().collect(), table.values().collect());
+    let (xc, tc) = (columns(&x, day), columns(&table, day));
+    let pool = pool(nthreads);
+    if pool.install(|| xc.iter().chain(&tc).any(far_day)) {
+        return Ok(().into());
+    }
+    let rows: Vec<u32> = (0..x[0].len().max(table[0].len()) as u32).collect();
+    let (xr, tr) = (&rows[..x[0].len()], &rows[..table[0].len()]);
+    // As in par_match_rows_rs()
+    let (xg, tg) = match xc.len() {
+        1 => groups(xr, tr, key1(&xc), key1(&tc), &pool),
+        2 => groups(xr, tr, key2(&xc), key2(&tc), &pool),
+        _ => groups(xr, tr, |&i| row(&xc, i), |&i| row(&tc, i), &pool),
+    };
+    pairs(&xg, &tg, &pool)
 }
 
 /// Strings per thread below which a regex gains nothing from another.
@@ -3000,6 +3138,7 @@ extendr_module! {
     fn par_duplicated_rs;
     fn par_match_rows_rs;
     fn par_duplicated_rows_rs;
+    fn par_match_rows_all_rs;
     fn par_detect_rs;
     fn par_count_rs;
     fn par_extract_rs;

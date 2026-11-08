@@ -42,12 +42,12 @@ With \code{x} and \code{table} the same, the pairs are all groups of equal
 elements, including each element paired with itself.
 }
 \details{
-Both sides are hashed once, by \code{par_match(x, table)} and
-\code{par_match(table, table)} (or the row versions), which number the
-groups of equal elements by their first position in \code{table}. The
-positions in \code{table} are then sorted by group, and each element of \code{x}
-is paired with the run of its group, so the work beyond the two lookups
-is linear in the number of pairs.
+The table is hashed once, and each of its elements is numbered
+by its group, the first equal element, as it goes into the map. Each
+element of \code{x} is then looked up in it, the positions in \code{table} are
+sorted by group with a counting sort, and the pairs are written on
+several threads, so the work beyond the hashing is linear in the
+number of pairs.
 
 The number of pairs can be much larger than either input: 1e5 equal
 elements on each side make 1e10. It is counted before any pair is

@@ -62,3 +62,47 @@ test_that("par_match_all() handles no matches and empty inputs", {
     )
   )
 })
+
+test_that("par_match_all() agrees with match() on every type, split by hash or not", {
+  # The pairs from first positions, sorted by x and then table
+  pairs_of <- function(x_first, table_first) {
+    by_group <- order(table_first, method = "radix")
+    sizes <- tabulate(table_first, length(table_first))
+    starts <- cumsum(c(1L, sizes))
+    matched <- which(!is.na(x_first))
+    counts <- sizes[x_first[matched]]
+    data.frame(
+      x = rep(matched, counts),
+      table = by_group[sequence(counts, from = starts[x_first[matched]])]
+    )
+  }
+  set.seed(5)
+  for (n in c(500, 2e5)) {
+    k <- n / 4
+    vectors <- list(
+      int = sample(c(1:k, NA), n, TRUE),
+      dbl = sample(c(1:k / 2, NA, NaN, -0), n, TRUE),
+      chr = sample(c(as.character(1:k), NA), n, TRUE),
+      fct = factor(sample(c(letters, NA), n, TRUE)),
+      date = as.Date(sample(c(1:k, NA), n, TRUE))
+    )
+    for (v in vectors) {
+      x <- v[seq(1, n, 3)]
+      expect_identical(par_match_all(x, v), pairs_of(match(x, v), match(v, v)))
+    }
+    # integer against double
+    expect_identical(
+      par_match_all(vectors$int, as.double(vectors$int)),
+      pairs_of(match(vectors$int, vectors$int), match(vectors$int, vectors$int))
+    )
+    rows <- data.frame(a = vectors$int %% 7L, b = vectors$chr, c = vectors$dbl > 3)
+    x <- rows[seq(1, n, 2), ]
+    expect_identical(
+      par_match_rows_all(x, rows),
+      pairs_of(par_match_rows(x, rows), par_match_rows(rows, rows))
+    )
+  }
+  # Dates too far out for Rust to match by day
+  far <- as.Date(c(1e11, 2, 1e11))
+  expect_identical(par_match_all(far, far), pairs_of(match(far, far), match(far, far)))
+})

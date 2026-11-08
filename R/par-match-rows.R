@@ -43,6 +43,18 @@ par_match_rows <- function(
   nthreads <- check_nthreads(nthreads)
 
   nomatch <- as.integer(nomatch)[1L]
+  rows <- check_rows(x, table)
+
+  call_rows(
+    function(xk, tk, day) par_match_rows_rs(xk, tk, day, nomatch, nthreads),
+    rows$x,
+    rows$table,
+    nthreads
+  )
+}
+
+# `x` and `table` as lists of columns, checked to be rows Rust can number.
+check_rows <- function(x, table) {
   x <- as_columns(x, "x")
   table <- as_columns(table, "table")
 
@@ -52,14 +64,19 @@ par_match_rows <- function(
   if (max(length(x[[1L]]), length(table[[1L]])) > .Machine$integer.max) {
     stop("`x` and `table` can have at most 2^31 - 1 rows.")
   }
+  list(x = x, table = table)
+}
 
+# `rust(xk, tk, day)`, par_match_rows_rs() or par_match_rows_all_rs(), on
+# the columns of `x` and `table` as Rust compares them.
+call_rows <- function(rust, x, table, nthreads) {
   # Each column pair as Rust compares it.
   pairs <- Map(key_pair, x, table, MoreArgs = list(nthreads = nthreads))
   xk <- lapply(pairs, `[[`, "x")
   tk <- lapply(pairs, `[[`, "table")
   day <- vapply(pairs, `[[`, NA, "day")
 
-  out <- par_match_rows_rs(xk, tk, day, nomatch, nthreads)
+  out <- rust(xk, tk, day)
   if (!is.null(out)) {
     return(out)
   }
@@ -69,7 +86,7 @@ par_match_rows <- function(
     xk[[j]] <- par_match(x[[j]], table[[j]], nthreads = nthreads)
     tk[[j]] <- par_match(table[[j]], table[[j]], nthreads = nthreads)
   }
-  par_match_rows_rs(xk, tk, logical(length(x)), nomatch, nthreads)
+  rust(xk, tk, logical(length(x)))
 }
 
 # Column `a` of `x` and `b` of `table` as Rust compares them, and whether

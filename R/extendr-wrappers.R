@@ -58,6 +58,12 @@ par_match_rows_rs <- function(x, table, day, nomatch, nthreads) .Call(wrap__par_
 #' @noRd
 par_duplicated_rows_rs <- function(x, from_last, nthreads) .Call(wrap__par_duplicated_rows_rs, x, from_last, nthreads)
 
+#' `par_match_rows_all()`: every pair of equal rows, as `pairs()` gives
+#' them, from columns prepared as for `par_match_rows_rs()`. Returns `NULL`
+#' for Dates beyond 1e10 days, as that does.
+#' @noRd
+par_match_rows_all_rs <- function(x, table, day, nthreads) .Call(wrap__par_match_rows_all_rs, x, table, day, nthreads)
+
 #' `grepl(pattern, x)` with Rust's regex syntax, or a literal `pattern` if
 #' `fixed`. `pattern` is one string, or one per string of `x`. Strings are
 #' matched as bytes, so R should pass both through `enc2utf8()` first. `NA`

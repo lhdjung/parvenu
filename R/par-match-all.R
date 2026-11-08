@@ -11,12 +11,12 @@
 #'   With `x` and `table` the same, the pairs are all groups of equal
 #'   elements, including each element paired with itself.
 #'
-#' @details Both sides are hashed once, by `par_match(x, table)` and
-#'   `par_match(table, table)` (or the row versions), which number the
-#'   groups of equal elements by their first position in `table`. The
-#'   positions in `table` are then sorted by group, and each element of `x`
-#'   is paired with the run of its group, so the work beyond the two lookups
-#'   is linear in the number of pairs.
+#' @details The table is hashed once, and each of its elements is numbered
+#'   by its group, the first equal element, as it goes into the map. Each
+#'   element of `x` is then looked up in it, the positions in `table` are
+#'   sorted by group with a counting sort, and the pairs are written on
+#'   several threads, so the work beyond the hashing is linear in the
+#'   number of pairs.
 #'
 #'   The number of pairs can be much larger than either input: 1e5 equal
 #'   elements on each side make 1e10. It is counted before any pair is
@@ -43,10 +43,12 @@ par_match_all <- function(
   table,
   nthreads = getOption("parvenu.threads", 0L)
 ) {
-  match_all(
-    par_match(x, table, nthreads = nthreads),
-    par_match(table, table, nthreads = nthreads)
-  )
+  nthreads <- check_nthreads(nthreads)
+  if (max(length(x), length(table)) > .Machine$integer.max) {
+    stop("`x` and `table` can have at most 2^31 - 1 elements.")
+  }
+  # One column of rows compares as par_match() compares vectors.
+  match_all(list(x), list(table), nthreads)
 }
 
 #' @rdname par_match_all
@@ -56,32 +58,17 @@ par_match_rows_all <- function(
   table,
   nthreads = getOption("parvenu.threads", 0L)
 ) {
-  match_all(
-    par_match_rows(x, table, nthreads = nthreads),
-    par_match_rows(table, table, nthreads = nthreads)
-  )
+  nthreads <- check_nthreads(nthreads)
+  rows <- check_rows(x, table)
+  match_all(rows$x, rows$table, nthreads)
 }
 
-# The pairs from `x_group`, the group of each element of `x`, and
-# `table_group`, the group of each element of `table`, both numbered by
-# first positions in `table`.
-match_all <- function(x_group, table_group) {
-  # The positions in `table` sorted by group (a stable sort, so ascending
-  # within each group), and where each group's run starts.
-  by_group <- order(table_group, method = "radix")
-  sizes <- tabulate(table_group, length(table_group))
-  run_starts <- cumsum(c(1L, sizes))
-
-  # Each matched element of `x` pairs with its group's whole run.
-  matched <- which(!is.na(x_group))
-  counts <- sizes[x_group[matched]]
-
-  if (sum(as.double(counts)) > .Machine$integer.max) {
-    stop("More than 2^31 - 1 pairs match.")
-  }
-
-  list2DF(list(
-    x = rep(matched, counts),
-    table = by_group[sequence(counts, from = run_starts[x_group[matched]])]
-  ))
+match_all <- function(x, table, nthreads) {
+  x |>
+    call_rows(
+      rust = function(xk, tk, day) par_match_rows_all_rs(xk, tk, day, nthreads),
+      table = table,
+      nthreads = nthreads
+    ) |>
+    list2DF()
 }
