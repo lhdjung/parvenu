@@ -224,6 +224,9 @@ local_time <- function(x, formats, try_formats, tz, nthreads) {
       return(NULL)
     }
     out <- local_secs(secs$whole, secs$frac, tz, nthreads)
+    if (is.null(out)) {
+      return(NULL)
+    }
     if (!try_formats || !anyNA(out[!is.na(x)])) {
       return(out)
     }
@@ -232,23 +235,28 @@ local_time <- function(x, formats, try_formats, tz, nthreads) {
 }
 
 # Seconds since 1970 of local times in `tz`, given as the whole seconds they
-# would be in UTC and the fractions, added last as base adds them. R's C
-# code places a local time, as as.POSIXct() does for a POSIXlt, in about
-# 4us, so it places only the ends of the calendar days used and of their
-# neighbours: a day whose offset from UTC is the same at both its ends, and
-# at the ends of the days next to it, has no change of clock in it or at
-# its edges, so its times are placed by subtracting the offset. The times of
-# the other days go through base's own strptime() and as.POSIXct(), since
-# what they make of a time that doesn't exist or occurs twice depends on
-# the R version and the C library's mktime(): glibc's gives NA for the day
-# Pacific/Apia skipped in 2011, and before R 4.4.0, strptime() passed on
-# the isdst of a first mktime().
+# would be in UTC and the fractions, added last as base adds them, or NULL for
+# base. R's C code places a local time, as as.POSIXct() does for a POSIXlt, in
+# about 4us, so it places only the ends of the calendar days used and of their
+# neighbours: a day whose offset from UTC is the same at both its ends, and at
+# the ends of the days next to it, has no change of clock in it or at its
+# edges, so its times are placed by subtracting the offset. The times of the
+# other days go through base's own strptime() and as.POSIXct(), since what
+# they make of a time that doesn't exist or occurs twice depends on the R
+# version and the C library's mktime(): glibc's gives NA for the day
+# Pacific/Apia skipped in 2011, and before R 4.4.0, strptime() passed on the
+# isdst of a first mktime().
 # ponytail: a day whose clock changes twice, back to the same offset, would
 # be placed by that offset; no zone has had one.
 local_secs <- function(secs, frac, tz, nthreads) {
   # The days used, their neighbours, and the offset at both ends of each.
   days <- floor(secs / 86400)
   used <- days[!is.na(days)] |> par_unique(nthreads = nthreads)
+  # About 6 placements per day used: where days barely repeat, base is
+  # faster, placing each time once.
+  if (length(used) > length(secs) / 6) {
+    return(NULL)
+  }
   probe <- c(used - 1, used, used + 1) |>
     par_unique(nthreads = nthreads) |>
     sort()

@@ -254,8 +254,10 @@ test_that("other time zones give base's instants, also at changes of clock", {
     NA
   )
   set.seed(5)
-  t <- as.POSIXct("1950-01-01", tz = "UTC") + runif(1e4, 0, 4e9)
-  x <- c(edge, format(t, "%Y-%m-%d %H:%M:%OS3"))
+  # Each day repeats, so the days are probed; with a day per time, base
+  # would take over.
+  t <- as.POSIXct("1950-01-01", tz = "UTC") + runif(1e3, 0, 4e9)
+  x <- c(edge, rep(format(t, "%Y-%m-%d %H:%M:%OS3"), 10))
   f <- "%Y-%m-%d %H:%M:%OS"
   zones <- c(
     "Europe/Berlin",
@@ -285,6 +287,8 @@ test_that("other time zones give base's instants, also at changes of clock", {
   }
   y <- x[-seq_along(edge)]
   tz <- "Europe/Berlin"
+  sparse <- format(as.POSIXct("1950-01-01", tz = "UTC") + runif(1e4, 0, 4e9))
+  expect_identical(par_as_posixct(sparse, tz = tz), as.POSIXct(sparse, tz = tz))
   expect_identical(par_as_posixct(y, tz = tz), as.POSIXct(y, tz = tz))
   named <- setNames(y, seq_along(y))
   expect_identical(par_as_posixct(named, tz = tz), as.POSIXct(named, tz = tz))
