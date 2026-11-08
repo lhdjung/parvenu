@@ -63,6 +63,12 @@ test_that("par_match_all() handles no matches and empty inputs", {
   )
 })
 
+test_that("par_match_all() refuses more pairs than an integer can count", {
+  # 5e4^2 pairs, refused when counted, before any is written
+  expect_error(par_match_all(rep(1, 5e4), rep(1, 5e4)), "2^31 - 1 pairs", fixed = TRUE)
+  expect_error(par_match_rows_all(list(rep(1, 5e4)), list(rep(1, 5e4))), "2^31 - 1 pairs", fixed = TRUE)
+})
+
 test_that("par_match_all() agrees with match() on every type, split by hash or not", {
   # The pairs from first positions, sorted by x and then table
   pairs_of <- function(x_first, table_first) {
