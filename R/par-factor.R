@@ -46,9 +46,11 @@ par_factor <- function(
     x <- character()
   }
   nx <- names(x)
+  # Classed and double inputs are matched as strings, as in base.
   matchAsChar <- is.object(x) ||
     !(is.character(x) || is.integer(x) || is.logical(x))
   if (missing(levels)) {
+    # The sorted distinct values.
     y <- par_unique(x, nthreads = nthreads)
     ind <- order(y)
     if (matchAsChar) {
@@ -65,28 +67,22 @@ par_factor <- function(
   if (!is.null(nx)) {
     names(f) <- nx
   }
+  nlab <- length(labels)
   if (missing(labels)) {
     levels(f) <- as.character(levels)
+  } else if (nlab == length(levels)) {
+    # Duplicated labels merge their levels.
+    xlevs <- as.character(labels)
+    nlevs <- unique(xlevs)
+    at <- attributes(f)
+    at$levels <- nlevs
+    f <- match(xlevs, nlevs)[f]
+    attributes(f) <- at
+  } else if (nlab == 1L) {
+    levels(f) <- paste0(labels, seq_along(levels))
   } else {
-    nlab <- length(labels)
-    if (nlab == length(levels)) {
-      nlevs <- unique(xlevs <- as.character(labels))
-      at <- attributes(f)
-      at$levels <- nlevs
-      f <- match(xlevs, nlevs)[f]
-      attributes(f) <- at
-    } else if (nlab == 1L) {
-      levels(f) <- paste0(labels, seq_along(levels))
-    } else {
-      stop(
-        gettextf(
-          "invalid 'labels'; length %d should be 1 or %d",
-          nlab,
-          length(levels)
-        ),
-        domain = NA
-      )
-    }
+    msg <- "invalid 'labels'; length %d should be 1 or %d"
+    stop(gettextf(msg, nlab, length(levels)), domain = NA)
   }
   class(f) <- c(if (ordered) "ordered", "factor")
   f
@@ -104,6 +100,7 @@ par_table <- function(
 ) {
   nthreads <- check_nthreads(nthreads)
   # As base's table(), with par_factor() and par_match().
+  # Default names: those of the arguments, or their deparsed expressions.
   list.names <- function(...) {
     l <- as.list(substitute(list(...)))[-1L]
     if (length(l) == 1L && is.list(..1) && !is.null(nm <- names(..1))) {
@@ -130,6 +127,7 @@ par_table <- function(
       nm
     }
   }
+  # Settle `useNA` from `exclude`, as base does.
   miss.use <- missing(useNA)
   miss.exc <- missing(exclude)
   useNA <- if (miss.use && !miss.exc && !match(NA, exclude, nomatch = 0L)) {
@@ -143,6 +141,7 @@ par_table <- function(
       "'exclude' containing NA and 'useNA' != \"no\"' are a bit contradicting"
     )
   }
+  # A single list argument holds the factors.
   args <- list(...)
   if (length(args) == 1L && is.list(args[[1L]])) {
     args <- args[[1L]]
@@ -153,6 +152,7 @@ par_table <- function(
   if (!length(args)) {
     stop("nothing to tabulate")
   }
+  # Each factor adds its codes to `bin`, one cell index per element.
   bin <- 0L
   lens <- NULL
   dims <- integer()
@@ -169,29 +169,25 @@ par_table <- function(
       aNA <- anyNA(a)
     }
     if (!fact.a) {
+      # Warnings become errors here, as in base.
       a0 <- a
       op <- options(warn = 2)
       on.exit(options(op))
       a <- par_factor(a, exclude = exclude, nthreads = nthreads)
       options(op)
     }
-    add.na <- doNA
-    if (add.na) {
-      ifany <- (useNA == "ifany")
+    # An NA level is added where there are NAs, and with "always" if there
+    # isn't one yet. This is base's logic, untangled.
+    add.na <- FALSE
+    if (doNA) {
+      ifany <- useNA == "ifany"
       anNAc <- anyNA(a)
-      add.na <- if (!ifany || anNAc) {
-        ll <- levels(a)
-        if (add.ll <- !anyNA(ll)) {
-          ll <- c(ll, NA)
-          TRUE
-        } else if (!ifany && !anNAc) {
-          FALSE
-        } else {
-          TRUE
-        }
-      } else {
-        FALSE
+      ll <- levels(a)
+      add.ll <- !anyNA(ll)
+      if (add.ll) {
+        ll <- c(ll, NA)
       }
+      add.na <- anNAc || (!ifany && add.ll)
     }
     if (add.na) {
       a <- par_factor(a, levels = ll, exclude = NULL, nthreads = nthreads)
@@ -199,8 +195,10 @@ par_table <- function(
       ll <- levels(a)
     }
     a <- as.integer(a)
+    # Drop the excluded levels and values.
     if (fact.a && !miss.exc) {
-      ll <- ll[keep <- which(match(ll, exclude, nomatch = 0L) == 0L)]
+      keep <- which(match(ll, exclude, nomatch = 0L) == 0L)
+      ll <- ll[keep]
       a <- par_match(a, keep, nthreads = nthreads)
     } else if (!fact.a && add.na) {
       if (ifany && !aNA && add.ll) {
@@ -219,6 +217,7 @@ par_table <- function(
     bin <- bin + pd * (a - 1L)
     pd <- pd * nl
   }
+  # Count the cells.
   names(dn) <- dnn
   bin <- bin[!is.na(bin)]
   if (length(bin)) {

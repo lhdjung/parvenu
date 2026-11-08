@@ -22,12 +22,10 @@ par_union <- function(x, y, nthreads = getOption("parvenu.threads", 0L)) {
     x <- as.vector(x)
     y <- as.vector(y)
   } else if (!isa(x, class(y))) {
-    x <- c(y[0L], x)
+    x <- c(y[0L], x) # take `y`'s class
   }
-  x <- par_unique(x, nthreads = nthreads)
-  names(x) <- NULL
-  y <- par_unique(y, nthreads = nthreads)
-  names(y) <- NULL
+  x <- unique_unnamed(x, nthreads)
+  y <- unique_unnamed(y, nthreads)
   c(x, y[par_match(y, x, 0L, nthreads = nthreads) == 0L])
 }
 
@@ -41,10 +39,8 @@ par_intersect <- function(x, y, nthreads = getOption("parvenu.threads", 0L)) {
     x <- as.vector(x)
     y <- as.vector(y)
   }
-  x <- par_unique(x, nthreads = nthreads)
-  names(x) <- NULL
-  y <- par_unique(y, nthreads = nthreads)
-  names(y) <- NULL
+  x <- unique_unnamed(x, nthreads)
+  y <- unique_unnamed(y, nthreads)
   c(x[par_match(x, y, 0L, nthreads = nthreads) > 0L], y[0L])
 }
 
@@ -58,11 +54,16 @@ par_setdiff <- function(x, y, nthreads = getOption("parvenu.threads", 0L)) {
     x <- as.vector(x)
     y <- as.vector(y)
   }
-  x <- par_unique(x, nthreads = nthreads)
-  names(x) <- NULL
-  y <- par_unique(y, nthreads = nthreads)
-  names(y) <- NULL
+  x <- unique_unnamed(x, nthreads)
+  y <- unique_unnamed(y, nthreads)
   x[par_match(x, y, 0L, nthreads = nthreads) == 0L]
+}
+
+# par_unique() without names, as the set operations return it.
+unique_unnamed <- function(v, nthreads) {
+  v <- par_unique(v, nthreads = nthreads)
+  names(v) <- NULL
+  v
 }
 
 # base:::.set_ops_need_as_vector (R 4.5): whether the set operations work on

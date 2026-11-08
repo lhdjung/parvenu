@@ -71,27 +71,18 @@ par_match <- function(
   if (is.factor(x) && length(x) >= RUST_MIN) {
     # Base converts all of `x` to strings; matching the levels is enough.
     # The extra `NA` level is for missing values.
-    return(index_codes(
-      x,
-      match(c(levels(x), NA_character_), table, nomatch),
-      nthreads
-    ))
+    m <- c(levels(x), NA_character_) |> match(table, nomatch)
+    return(index_codes(x, m, nthreads))
   }
 
   # Rust returns 32-bit positions, and uses the largest as "no match", so
   # longer tables go to base.
-  out <- if (
-    max(length(x), length(table)) >= RUST_MIN &&
-      length(table) < .Machine$integer.max
-  ) {
-    par_match_fast(x, table, nomatch, nthreads)
-  }
-
-  if (is.null(out)) match(x, table, nomatch) else out
+  fits <- max(length(x), length(table)) >= RUST_MIN &&
+    length(table) < .Machine$integer.max
+  out <- if (fits) par_match_fast(x, table, nomatch, nthreads)
+  out %||% match(x, table, nomatch)
 }
 
-#' @rdname par_match
-#' @export
 `%par_in%` <- function(x, table) par_match(x, table, nomatch = 0L) > 0L
 
 #' @rdname par_match
@@ -113,6 +104,7 @@ par_match_fast <- function(x, table, nomatch, nthreads) {
     ))
   }
 
+  # Factors become strings; other classes become NULL and go to base.
   x <- as_plain(x)
   table <- as_plain(table)
 
@@ -121,6 +113,7 @@ par_match_fast <- function(x, table, nomatch, nthreads) {
   } else if (is.double(x) && is.double(table)) {
     par_match_dbl(x, table, nomatch, nthreads, FALSE)
   } else if (is_num(x) && is_num(table)) {
+    # One integer side, one double side.
     par_match_mixed(x, table, nomatch, nthreads)
   } else if (is.character(x) && is.character(table)) {
     par_match_chr(x, table, nomatch, nthreads)

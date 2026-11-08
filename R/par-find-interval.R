@@ -49,45 +49,43 @@ par_find_interval <- function(
 ) {
   nthreads <- check_nthreads(nthreads)
 
-  if (
-    length(x) < RUST_MIN ||
-      !is_num(x) ||
-      !is_num(vec) ||
-      # Classes whose numbers aren't their as.double(), such as integer64.
-      !is_dup_class(x) ||
-      !is_dup_class(vec) ||
-      length(vec) == 0L ||
-      length(vec) > .Machine$integer.max ||
-      !is_bool(rightmost.closed) ||
-      !is_bool(all.inside) ||
-      !is_bool(left.open) ||
-      anyNA(vec) ||
-      is.unsorted(vec)
-  ) {
-    # checkSorted and checkNA arrived in R 4.5.0. A local copy keeps R CMD
-    # check on older R from flagging them, and errors still name it.
-    findInterval <- base::findInterval
-    if (getRversion() < "4.5.0") {
-      findInterval(x, vec, rightmost.closed, all.inside, left.open)
-    } else {
-      findInterval(
-        x,
-        vec,
-        rightmost.closed,
-        all.inside,
-        left.open,
-        checkSorted,
-        checkNA
-      )
-    }
-  } else {
-    par_find_interval_rs(
+  use_base <- length(x) < RUST_MIN ||
+    !is_num(x) ||
+    !is_num(vec) ||
+    # Classes whose numbers aren't their as.double(), such as integer64.
+    !is_dup_class(x) ||
+    !is_dup_class(vec) ||
+    length(vec) == 0L ||
+    length(vec) > .Machine$integer.max ||
+    !is_bool(rightmost.closed) ||
+    !is_bool(all.inside) ||
+    !is_bool(left.open) ||
+    anyNA(vec) ||
+    is.unsorted(vec)
+  if (!use_base) {
+    return(par_find_interval_rs(
       as_dbl(x),
       as_dbl(vec),
       rightmost.closed,
       all.inside,
       left.open,
       nthreads
-    )
+    ))
   }
+
+  # checkSorted and checkNA arrived in R 4.5.0. A local copy keeps R CMD
+  # check on older R from flagging them, and errors still name it.
+  findInterval <- base::findInterval
+  if (getRversion() < "4.5.0") {
+    return(findInterval(x, vec, rightmost.closed, all.inside, left.open))
+  }
+  findInterval(
+    x,
+    vec,
+    rightmost.closed,
+    all.inside,
+    left.open,
+    checkSorted,
+    checkNA
+  )
 }

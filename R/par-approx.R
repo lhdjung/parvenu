@@ -43,6 +43,7 @@ par_approx <- function(
     env$.parvenu_xout <- xout
     call$xout <- quote(.parvenu_xout)
   }
+  # Base for what Rust doesn't cover.
   if (
     missing(xout) ||
       !is.numeric(xout) ||
@@ -53,6 +54,7 @@ par_approx <- function(
     call[[1L]] <- quote(stats::approx)
     return(eval(call, env))
   }
+  # Otherwise approxfun() prepares the points, and Rust interpolates.
   call[[1L]] <- quote(stats::approxfun)
   call$xout <- NULL
   call$n <- NULL

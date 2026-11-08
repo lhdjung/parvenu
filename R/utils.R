@@ -1,3 +1,7 @@
+# `x`, or `y` if `x` is NULL: base has it only from R 4.4.0. `y` is only
+# evaluated when needed, so `rust() %||% base()` calls base only as a fallback.
+`%||%` <- function(x, y) if (is.null(x)) y else x
+
 is_bool <- function(x) is.logical(x) && length(x) == 1L && !is.na(x)
 
 is_string <- function(x) is.character(x) && length(x) == 1L && !is.na(x)
@@ -34,9 +38,10 @@ as_columns <- function(x, arg) {
   if (!is.list(x) || length(x) == 0L) {
     stop("`", arg, "` must be a data frame or a list of columns.")
   }
-  x <- unname(as.list(x))
+  x <- x |> as.list() |> unname()
   is_column <- function(v) is.atomic(v) || (is.list(v) && !is.data.frame(v))
-  if (length(unique(lengths(x))) != 1L || !all(vapply(x, is_column, NA))) {
+  same_length <- lengths(x) |> unique() |> length() == 1L
+  if (!same_length || !all(vapply(x, is_column, NA))) {
     stop("The columns of `", arg, "` must be vectors of the same length.")
   }
   x
@@ -50,6 +55,6 @@ index_levels <- function(x, m, nthreads) {
     return(index_codes(x, m, nthreads))
   }
   codes <- as.integer(x)
-  codes[is.na(codes)] <- length(m)
+  codes[is.na(codes)] <- length(m) # NA codes take the last element
   m[codes]
 }

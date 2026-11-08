@@ -73,11 +73,12 @@ par_extract <- function(
   fixed = FALSE,
   nthreads = getOption("parvenu.threads", 0L)
 ) {
+  if (length(group) > 1L && is.factor(x)) {
+    # A matrix can't be indexed by the levels; the names go, as below.
+    x <- as.character(x)
+  }
   if (length(group) > 1L) {
-    if (is.factor(x)) {
-      # A matrix can't be indexed by the levels; the names go, as below.
-      x <- as.character(x)
-    }
+    # One column per group.
     out <- run_extract(par_extract_rs, x, pattern, group, fixed, nthreads, TRUE)
     dim(out) <- c(length(x), length(group))
     rownames(out) <- names(x)
@@ -167,22 +168,18 @@ par_replace_all <- function(
 # Checks `group`, one number or several if `many`, and calls `rs`,
 # par_extract_rs() or the like.
 run_extract <- function(rs, x, pattern, group, fixed, nthreads, many = FALSE) {
-  if (
-    !is.numeric(group) ||
-      !(length(group) == 1L || (many && length(group) > 1L)) ||
-      anyNA(group) ||
-      any(group < 0 | group > .Machine$integer.max | group != trunc(group))
-  ) {
-    stop(
-      "`group` must be ",
-      if (many) {
-        "non-negative whole numbers."
-      } else {
-        "a single non-negative whole number."
-      }
-    )
+  ok <- is.numeric(group) &&
+    (length(group) == 1L || (many && length(group) > 1L)) &&
+    !anyNA(group) &&
+    all(group >= 0 & group <= .Machine$integer.max & group == trunc(group))
+  if (!ok && many) {
+    stop("`group` must be non-negative whole numbers.")
+  }
+  if (!ok) {
+    stop("`group` must be a single non-negative whole number.")
   }
   group <- as.integer(group)
+  # run_pattern() doesn't know `group`, so it's bound here.
   rs_group <- function(x, pattern, fixed, nthreads) {
     rs(x, pattern, group, fixed, nthreads)
   }
@@ -199,6 +196,7 @@ run_replace <- function(x, pattern, replacement, fixed, all, nthreads) {
     stop("`replacement` must be a string.")
   }
   replacement <- enc2utf8(replacement)
+  # Binds `replacement` and `all` for run_pattern().
   rs <- function(x, pattern, fixed, nthreads) {
     par_replace_rs(x, pattern, replacement, fixed, all, nthreads)
   }

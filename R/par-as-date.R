@@ -59,14 +59,18 @@ par_as_date <- function(
   nthreads <- check_nthreads(nthreads)
   out <- parse_time(x, format, tryFormats, TRUE, nthreads)
 
+  # Base takes over, with `format` still missing if it was.
+  if (is.null(out) && missing(format)) {
+    return(as.Date(x, tryFormats = tryFormats, optional = optional, ...))
+  }
   if (is.null(out)) {
-    return(
-      if (missing(format)) {
-        as.Date(x, tryFormats = tryFormats, optional = optional, ...)
-      } else {
-        as.Date(x, format, tryFormats = tryFormats, optional = optional, ...)
-      }
-    )
+    return(as.Date(
+      x,
+      format,
+      tryFormats = tryFormats,
+      optional = optional,
+      ...
+    ))
   }
 
   names(out) <- if (!is.factor(x)) names(x) # as.character() drops a factor's
@@ -94,35 +98,14 @@ par_as_posixct <- function(
   nthreads = getOption("parvenu.threads", 0L)
 ) {
   nthreads <- check_nthreads(nthreads)
+  out <- posixct_secs(x, tz, format, tryFormats, nthreads)
 
-  formats <- if (missing(format)) tryFormats else format
-  utc <- identical(tz, "UTC") ||
-    identical(tz, "GMT") ||
-    (identical(tz, "") && session_utc())
-  out <- if (utc) {
-    parse_time(x, format, tryFormats, FALSE, nthreads)
-  } else if (
-    is_string(tz) &&
-      is.character(formats) &&
-      # strptime() recycles several formats along `x`.
-      (missing(format) || length(format) == 1L)
-  ) {
-    if (!any(grepl("%z", formats, fixed = TRUE))) {
-      local_time(x, formats, missing(format), tz, nthreads)
-    } else if (!missing(format)) {
-      # The offset fixes the instant, so the zone only labels it.
-      parse_time(x, format, tryFormats, FALSE, nthreads)
-    }
+  # Base takes over, with `format` still missing if it was.
+  if (is.null(out) && missing(format)) {
+    return(as.POSIXct(x, tz, tryFormats = tryFormats, optional = optional, ...))
   }
-
   if (is.null(out)) {
-    return(
-      if (missing(format)) {
-        as.POSIXct(x, tz, tryFormats = tryFormats, optional = optional, ...)
-      } else {
-        as.POSIXct(x, tz, format = format, optional = optional, ...)
-      }
-    )
+    return(as.POSIXct(x, tz, format = format, optional = optional, ...))
   }
 
   names(out) <- names(x)
@@ -130,6 +113,28 @@ par_as_posixct <- function(
   attr(out, "tzone") <- tz
 
   out
+}
+
+# Seconds since 1970 for par_as_posixct(), or NULL where base must take over.
+posixct_secs <- function(x, tz, format, tryFormats, nthreads) {
+  utc <- identical(tz, "UTC") ||
+    identical(tz, "GMT") ||
+    (identical(tz, "") && session_utc())
+  if (utc) {
+    return(parse_time(x, format, tryFormats, FALSE, nthreads))
+  }
+
+  formats <- if (missing(format)) tryFormats else format
+  # strptime() recycles several formats along `x`.
+  one_format <- missing(format) || length(format) == 1L
+  if (!is_string(tz) || !is.character(formats) || !one_format) {
+    return(NULL)
+  }
+  if (!any(grepl("%z", formats, fixed = TRUE))) {
+    return(local_time(x, formats, missing(format), tz, nthreads))
+  }
+  # The offset fixes the instant, so the zone only labels it.
+  if (!missing(format)) parse_time(x, format, tryFormats, FALSE, nthreads)
 }
 
 # Whether the session's time zone, which `tz = ""` means, is UTC, as on most
@@ -153,37 +158,39 @@ parse_time <- function(x, format, tryFormats, date, nthreads, split = FALSE) {
   try_formats <- missing(format)
   formats <- if (try_formats) tryFormats else format
 
-  if (
-    is.character(x) &&
-      length(x) >= RUST_MIN &&
-      is.character(formats) &&
-      # strptime() recycles several formats along `x`.
-      (try_formats || length(formats) == 1L) &&
-      length(formats) >= 1L &&
-      !anyNA(formats) &&
-      # Base warns on a %j or %z it can't read, for each format it tries.
-      !(try_formats && any(grepl("%[jz]", formats))) &&
-      english_time(formats)
-  ) {
-    out <- par_parse_time_rs(
-      as_utf8(x),
-      formats,
-      try_formats,
-      date,
-      split,
-      # strptime() reads seconds more strictly from R 4.6.0.
-      getRversion() >= "4.6.0",
-      nthreads
-    )
-    if (!is.null(out) && any(grepl("%[jz]", formats))) {
-      # Only strings that fail can warn, so base reads those again.
-      failed <- is.na(if (split) out$whole else out) & !is.na(x)
-      if (any(failed)) {
-        strptime(x[failed], formats, tz = "UTC")
-      }
-    }
-    out
+  rust <- is.character(x) &&
+    length(x) >= RUST_MIN &&
+    is.character(formats) &&
+    # strptime() recycles several formats along `x`.
+    (try_formats || length(formats) == 1L) &&
+    length(formats) >= 1L &&
+    !anyNA(formats) &&
+    # Base warns on a %j or %z it can't read, for each format it tries.
+    !(try_formats && any(grepl("%[jz]", formats))) &&
+    english_time(formats)
+  if (!rust) {
+    return(NULL)
   }
+
+  out <- par_parse_time_rs(
+    as_utf8(x),
+    formats,
+    try_formats,
+    date,
+    split,
+    # strptime() reads seconds more strictly from R 4.6.0.
+    getRversion() >= "4.6.0",
+    nthreads
+  )
+  if (is.null(out) || !any(grepl("%[jz]", formats))) {
+    return(out)
+  }
+  # Only strings that fail can warn, so base reads those again.
+  failed <- is.na(if (split) out$whole else out) & !is.na(x)
+  if (any(failed)) {
+    strptime(x[failed], formats, tz = "UTC")
+  }
+  out
 }
 
 # Whether strptime() reads the English month names and AM/PM that `formats`
@@ -195,13 +202,15 @@ parse_time <- function(x, format, tryFormats, date, nthreads, split = FALSE) {
 # these, which are kept separately, so could differ.
 english_time <- function(formats) {
   read <- function(s, f) strptime(s, f, tz = "UTC")
-  (!any(grepl("%[bBh]", formats)) ||
-    identical(
-      read(paste(c(month.abb, month.name), 1), "%b %d")$mon,
-      rep(0:11, 2L)
-    )) &&
-    (!any(grepl("%p", formats, fixed = TRUE)) ||
-      identical(read(c("1 AM", "1 PM"), "%I %p")$hour, c(1L, 13L)))
+  months_ok <- function() {
+    mon <- c(month.abb, month.name) |> paste(1) |> read("%b %d")
+    identical(mon$mon, rep(0:11, 2L))
+  }
+  ampm_ok <- function() {
+    identical(read(c("1 AM", "1 PM"), "%I %p")$hour, c(1L, 13L))
+  }
+  (!any(grepl("%[bBh]", formats)) || months_ok()) &&
+    (!any(grepl("%p", formats, fixed = TRUE)) || ampm_ok())
 }
 
 # Seconds of the times of `x` read with `formats` and placed in `tz`, or
@@ -237,50 +246,63 @@ local_time <- function(x, formats, try_formats, tz, nthreads) {
 # ponytail: a day whose clock changes twice, back to the same offset, would
 # be placed by that offset; no zone has had one.
 local_secs <- function(secs, frac, tz, nthreads) {
-  place <- function(s) {
-    if (!length(s)) {
-      return(s)
-    }
-    lt <- as.POSIXlt(.POSIXct(s, "UTC"))
-    attr(lt, "tzone") <- tz
-    lt$isdst <- -1L
-    lt$gmtoff <- NA_integer_
-    as.double(as.POSIXct(lt, tz))
-  }
-  as_base <- function(s) {
-    if (!length(s)) {
-      return(s)
-    }
-    lt <- as.POSIXlt(.POSIXct(s, "UTC"))
-    x <- sprintf(
-      "%04d-%02d-%02d %02d:%02d:%02d",
-      lt$year + 1900L,
-      lt$mon + 1L,
-      lt$mday,
-      lt$hour,
-      lt$min,
-      as.integer(lt$sec)
-    )
-    as.double(as.POSIXct(strptime(x, "%Y-%m-%d %H:%M:%S", tz), tz))
-  }
+  # The days used, their neighbours, and the offset at both ends of each.
   days <- floor(secs / 86400)
-  used <- par_unique(days[!is.na(days)], nthreads = nthreads)
-  probe <- sort(par_unique(c(used - 1, used, used + 1), nthreads = nthreads))
+  used <- days[!is.na(days)] |> par_unique(nthreads = nthreads)
+  probe <- c(used - 1, used, used + 1) |>
+    par_unique(nthreads = nthreads) |>
+    sort()
   ends <- c(probe * 86400, probe * 86400 + 86399)
-  offset <- place(ends) - ends
+  offset <- place_in_zone(ends, tz) - ends
   start <- offset[seq_along(probe)]
   end <- offset[length(probe) + seq_along(probe)]
+
+  # Days with one offset throughout, as on the days next to them.
   i <- match(used, probe)
   same <- function(a, b) !is.na(a) & !is.na(b) & a == b
   plain <- same(end[i - 1L], start[i]) &
     same(start[i], end[i]) &
     same(end[i], start[i + 1L]) &
     same(start[i + 1L], end[i + 1L])
+
+  # Those are shifted by their offset; the rest go through base.
   k <- par_match(days, used, nthreads = nthreads)
   out <- secs + start[i][k]
   hard <- which(!plain[k])
-  out[hard] <- as_base(secs[hard])
+  out[hard] <- place_by_base(secs[hard], tz)
   # Infinite seconds, from R 4.6.0.
   out[is.nan(secs)] <- NaN
   out + frac
+}
+
+# UTC seconds `s` read as local times in `tz`, placed by R's C code.
+place_in_zone <- function(s, tz) {
+  if (!length(s)) {
+    return(s)
+  }
+  lt <- .POSIXct(s, "UTC") |> as.POSIXlt()
+  attr(lt, "tzone") <- tz
+  lt$isdst <- -1L # let mktime() decide
+  lt$gmtoff <- NA_integer_
+  as.POSIXct(lt, tz) |> as.double()
+}
+
+# The same, through strptime() and as.POSIXct() on strings, as base does.
+place_by_base <- function(s, tz) {
+  if (!length(s)) {
+    return(s)
+  }
+  lt <- .POSIXct(s, "UTC") |> as.POSIXlt()
+  sprintf(
+    "%04d-%02d-%02d %02d:%02d:%02d",
+    lt$year + 1900L,
+    lt$mon + 1L,
+    lt$mday,
+    lt$hour,
+    lt$min,
+    as.integer(lt$sec)
+  ) |>
+    strptime("%Y-%m-%d %H:%M:%S", tz) |>
+    as.POSIXct(tz) |>
+    as.double()
 }

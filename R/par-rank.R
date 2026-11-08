@@ -28,6 +28,7 @@ par_rank <- function(
 ) {
   nthreads <- check_nthreads(nthreads)
   ties.method <- match.arg(ties.method)
+  # Factors rank by their codes.
   plain <- is.factor(x) || (!is.object(x) && is_num(x))
   if (
     !plain ||
@@ -44,6 +45,7 @@ par_rank <- function(
     x <- as.integer(x)
   }
   if (is.na(na.last)) {
+    # `na.last = NA` drops NAs first.
     keep <- !is.na(x)
     x <- x[keep]
     nm <- nm[keep]

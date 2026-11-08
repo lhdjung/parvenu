@@ -72,6 +72,7 @@ match_all <- function(x_group, table_group) {
   sizes <- tabulate(table_group, length(table_group))
   run_starts <- cumsum(c(1L, sizes))
 
+  # Each matched element of `x` pairs with its group's whole run.
   matched <- which(!is.na(x_group))
   counts <- sizes[x_group[matched]]
 

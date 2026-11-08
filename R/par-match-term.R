@@ -135,18 +135,17 @@ par_count_term <- function(
   weights = NULL,
   nthreads = getOption("parvenu.threads", 0L)
 ) {
-  if (
-    !is.null(weights) &&
-      (!is.numeric(weights) ||
-        length(weights) != length(terms) ||
-        anyNA(weights))
-  ) {
+  ok <- is.null(weights) ||
+    (is.numeric(weights) &&
+      length(weights) == length(terms) &&
+      !anyNA(weights))
+  if (!ok) {
     stop(
       "`weights` must be `NULL`, or numbers as long as `terms`, without `NA`."
     )
   }
   weights <- if (!is.null(weights)) as.double(weights)
-  rs <- function(...) par_count_term_rs(..., weights)
+  rs <- function(...) par_count_term_rs(..., weights) # binds `weights`
   run_terms(
     rs,
     x,
@@ -199,10 +198,11 @@ par_match_term_all <- function(
       fixed,
       nthreads
     )
-    sizes <- tabulate(lv$x, nlevels(x))
+    sizes <- tabulate(lv$x, nlevels(x)) # pairs per level
     codes <- as.integer(x)
     i <- which(!is.na(codes))
     counts <- sizes[codes[i]]
+    # Each element's run of rows in `lv`.
     rows <- sequence(counts, from = cumsum(c(1L, sizes))[codes[i]])
     return(list2DF(list(
       x = rep.int(i, counts),
@@ -282,7 +282,7 @@ par_replace_term <- function(
     stop("`terms` must not contain `\"\"`.")
   }
   replacement <- enc2utf8(replacement)
-  rs <- function(...) par_replace_term_rs(..., replacement)
+  rs <- function(...) par_replace_term_rs(..., replacement) # binds it
   out <- run_terms(rs, x, terms, ignore_case, whole_word, fixed, nthreads)
   names(out) <- if (!is.factor(x)) names(x) # as gsub() keeps them
   out
@@ -299,6 +299,7 @@ run_terms <- function(rs, x, terms, ignore_case, whole_word, fixed, nthreads) {
     stop("`ignore_case` must be `TRUE` or `FALSE`.")
   }
 
+  # Word boundaries at the start and the end of a term.
   if (identical(whole_word, "start")) {
     bounds <- c(TRUE, FALSE)
   } else if (is_bool(whole_word)) {

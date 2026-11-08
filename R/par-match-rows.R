@@ -53,64 +53,63 @@ par_match_rows <- function(
     stop("`x` and `table` can have at most 2^31 - 1 rows.")
   }
 
-  x0 <- x
-  table0 <- table
+  # Each column pair as Rust compares it.
+  pairs <- Map(key_pair, x, table, MoreArgs = list(nthreads = nthreads))
+  xk <- lapply(pairs, `[[`, "x")
+  tk <- lapply(pairs, `[[`, "table")
+  day <- vapply(pairs, `[[`, NA, "day")
 
-  day <- logical(length(x))
-
-  # Earlier versions compared Dates by their printed day, so 1.5 matched 1
-  dates_by_day <- getRversion() < "4.6.0"
-
-  for (j in seq_along(x)) {
-    a <- x[[j]]
-    b <- table[[j]]
-
-    if (identical(class(a), "Date") && identical(class(b), "Date")) {
-      day[j] <- dates_by_day
-      a <- as_dbl(a)
-      b <- as_dbl(b)
-    } else if (
-      is.factor(a) && is.factor(b) && !anyNA(c(levels(a), levels(b)))
-    ) {
-      # Codes stand in for the levels, which as.character() would copy into
-      # every element: `a`'s become `b`'s, and levels `b` lacks become 0,
-      # which no code of `b` is. A level that is `NA` would equal an `NA`
-      # code as a string, so such factors are matched as strings below.
-      m <- c(match(levels(a), levels(b), nomatch = 0L), NA)
-      a <- index_codes(a, m, nthreads)
-    } else {
-      a <- as_plain(a)
-      b <- as_plain(b)
-      if (is_num(a) && is_num(b) && is.integer(a) != is.integer(b)) {
-        a <- as.double(a)
-        b <- as.double(b)
-      } else if (
-        !(is_num(a) && is_num(b)) &&
-          !(is.character(a) &&
-            is.character(b) &&
-            par_pointers_suffice(a, b, nthreads))
-      ) {
-        # Positions of first occurrences in `table` stand in for the values.
-        a <- par_match(x[[j]], table[[j]], nthreads = nthreads)
-        b <- par_match(table[[j]], table[[j]], nthreads = nthreads)
-      }
-    }
-
-    x[[j]] <- a
-    table[[j]] <- b
-  }
-
-  out <- par_match_rows_rs(x, table, day, nomatch, nthreads)
-
+  out <- par_match_rows_rs(xk, tk, day, nomatch, nthreads)
   if (!is.null(out)) {
     return(out)
   }
 
   # Base matches Dates beyond 1e10 days by their printed numbers.
   for (j in which(day)) {
-    x[[j]] <- par_match(x0[[j]], table0[[j]], nthreads = nthreads)
-    table[[j]] <- par_match(table0[[j]], table0[[j]], nthreads = nthreads)
+    xk[[j]] <- par_match(x[[j]], table[[j]], nthreads = nthreads)
+    tk[[j]] <- par_match(table[[j]], table[[j]], nthreads = nthreads)
+  }
+  par_match_rows_rs(xk, tk, logical(length(x)), nomatch, nthreads)
+}
+
+# Column `a` of `x` and `b` of `table` as Rust compares them, and whether
+# they are Dates that Rust must compare by day.
+key_pair <- function(a, b, nthreads) {
+  pair <- function(x, table, day = FALSE) list(x = x, table = table, day = day)
+
+  if (identical(class(a), "Date") && identical(class(b), "Date")) {
+    # Before R 4.6.0, Dates matched by their printed day, so 1.5 matched 1.
+    return(pair(as_dbl(a), as_dbl(b), getRversion() < "4.6.0"))
   }
 
-  par_match_rows_rs(x, table, logical(length(x)), nomatch, nthreads)
+  if (is.factor(a) && is.factor(b) && !anyNA(c(levels(a), levels(b)))) {
+    # Codes stand in for the levels, which as.character() would copy into
+    # every element: `a`'s become `b`'s, and levels `b` lacks become 0,
+    # which no code of `b` is. A level that is `NA` would equal an `NA`
+    # code as a string, so such factors are matched as strings below.
+    m <- c(match(levels(a), levels(b), nomatch = 0L), NA)
+    return(pair(index_codes(a, m, nthreads), b))
+  }
+
+  pa <- as_plain(a)
+  pb <- as_plain(b)
+  if (is_num(pa) && is_num(pb) && is.integer(pa) != is.integer(pb)) {
+    return(pair(as.double(pa), as.double(pb))) # integer against double
+  }
+  if (is_num(pa) && is_num(pb)) {
+    return(pair(pa, pb))
+  }
+  if (
+    is.character(pa) &&
+      is.character(pb) &&
+      par_pointers_suffice(pa, pb, nthreads)
+  ) {
+    return(pair(pa, pb))
+  }
+
+  # Positions of first occurrences in `table` stand in for the values.
+  pair(
+    par_match(a, b, nthreads = nthreads),
+    par_match(b, b, nthreads = nthreads)
+  )
 }

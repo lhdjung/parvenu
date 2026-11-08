@@ -47,6 +47,7 @@ par_rowsum <- function(
   if (anyNA(group)) {
     warning("missing values for 'group'")
   }
+  # The groups, sorted as base sorts them.
   groups <- par_unique(group, nthreads = nthreads)
   if (reorder) {
     groups <- sort(groups, na.last = TRUE, method = "quick")

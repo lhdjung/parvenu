@@ -56,33 +56,35 @@ par_duplicated <- function(
   nthreads = getOption("parvenu.threads", 0L)
 ) {
   nthreads <- check_nthreads(nthreads)
+  base <- function() duplicated(x, incomparables, fromLast = fromLast)
 
-  # Rust marks duplicates by 32-bit positions, so longer inputs go to base.
-  out <- if (
-    isFALSE(incomparables) &&
-      is_bool(fromLast) &&
-      NROW(x) <= .Machine$integer.max
-  ) {
-    if (is.data.frame(x) && length(x) == 1L) {
-      # Base compares a single column as a vector.
-      return(par_duplicated(x[[1L]], fromLast = fromLast, nthreads = nthreads))
-    } else if (is.data.frame(x) && length(x) > 1L && nrow(x) >= RUST_MIN) {
-      cols <- lapply(x, dup_column, nthreads)
-      if (!any(vapply(cols, is.null, NA))) {
-        par_duplicated_rows_rs(unname(cols), fromLast, nthreads)
-      }
-    } else if (length(x) >= RUST_MIN && is.null(dim(x)) && is_dup_class(x)) {
-      if (is.integer(x) || is.double(x) || is.character(x) || plain_factor(x)) {
-        par_duplicated_rs(x, fromLast, nthreads)
-      }
+  if (!is.data.frame(x)) {
+    if (!duplicated_in_rust(x, incomparables, fromLast)) {
+      return(base())
     }
+    return(par_duplicated_rs(x, fromLast, nthreads) %||% base())
   }
 
-  if (is.null(out)) {
-    duplicated(x, incomparables, fromLast = fromLast)
-  } else {
-    out
+  # Rust marks rows by 32-bit positions, so longer data frames go to base.
+  if (
+    !isFALSE(incomparables) ||
+      !is_bool(fromLast) ||
+      nrow(x) > .Machine$integer.max
+  ) {
+    return(base())
   }
+  if (length(x) == 1L) {
+    # Base compares a single column as a vector.
+    return(par_duplicated(x[[1L]], fromLast = fromLast, nthreads = nthreads))
+  }
+  if (length(x) == 0L || nrow(x) < RUST_MIN) {
+    return(base())
+  }
+  cols <- lapply(x, dup_column, nthreads)
+  if (vapply(cols, is.null, NA) |> any()) {
+    return(base())
+  }
+  par_duplicated_rows_rs(unname(cols), fromLast, nthreads)
 }
 
 #' @rdname par_duplicated
@@ -95,38 +97,16 @@ par_unique <- function(
 ) {
   if (is.data.frame(x)) {
     keep <- !par_duplicated(x, incomparables, fromLast, nthreads)
-    if (!identical(class(x), "data.frame")) {
-      # As unique.data.frame() does. Subclasses may have their own method.
-      return(x[keep, , drop = FALSE])
-    }
-    # `[.data.frame` gives the same, but spends most of its time checking
-    # the new row names for duplicates, which kept rows can't have.
-    keep <- which(keep)
-    out <- lapply(x, function(col) {
-      if (is.null(dim(col))) col[keep] else col[keep, , drop = FALSE]
-    })
-    attributes(out) <- attributes(x)
-    attr(out, "row.names") <- if (.row_names_info(x) < 0L) {
-      keep
-    } else {
-      attr(x, "row.names")[keep]
-    }
-    return(out)
+    return(keep_rows(x, keep))
   }
   nthreads <- check_nthreads(nthreads)
-  out <- if (
-    isFALSE(incomparables) &&
-      is_bool(fromLast) &&
-      length(x) >= RUST_MIN &&
-      length(x) <= .Machine$integer.max &&
-      is.null(dim(x)) &&
-      is_dup_class(x) &&
-      (is.integer(x) || is.double(x) || is.character(x) || plain_factor(x))
-  ) {
-    par_unique_rs(x, fromLast, nthreads)
+  base <- function() unique(x, incomparables, fromLast = fromLast)
+  if (!duplicated_in_rust(x, incomparables, fromLast)) {
+    return(base())
   }
+  out <- par_unique_rs(x, fromLast, nthreads)
   if (is.null(out)) {
-    return(unique(x, incomparables, fromLast = fromLast))
+    return(base())
   }
   # unique() keeps the class and time zone of Dates and POSIXct, and a factor
   # keeps its levels and class; everything else is dropped.
@@ -135,6 +115,28 @@ par_unique <- function(
   } else if (is.object(x)) {
     class(out) <- class(x)
     attr(out, "tzone") <- attr(x, "tzone")
+  }
+  out
+}
+
+# `x[keep, , drop = FALSE]` for a data frame `x`, as unique() subsets it.
+keep_rows <- function(x, keep) {
+  if (!identical(class(x), "data.frame")) {
+    # Subclasses may have their own `[` method.
+    return(x[keep, , drop = FALSE])
+  }
+  # `[.data.frame` gives the same, but spends most of its time checking
+  # the new row names for duplicates, which kept rows can't have.
+  keep <- which(keep)
+  take <- function(col) {
+    if (is.null(dim(col))) col[keep] else col[keep, , drop = FALSE]
+  }
+  out <- lapply(x, take)
+  attributes(out) <- attributes(x)
+  attr(out, "row.names") <- if (.row_names_info(x) < 0L) {
+    keep # automatic row names stay automatic
+  } else {
+    attr(x, "row.names")[keep]
   }
   out
 }
@@ -158,7 +160,7 @@ par_any_duplicated <- function(
       return(i[w])
     }
   }
-  w <- which(par_duplicated(x, incomparables, fromLast, nthreads))
+  w <- par_duplicated(x, incomparables, fromLast, nthreads) |> which()
   # Base scans from the end with `fromLast`, so it finds the last one.
   if (!length(w)) {
     0L
@@ -167,6 +169,18 @@ par_any_duplicated <- function(
   } else {
     w[1L]
   }
+}
+
+# Whether Rust takes the vector `x` for duplicated() and unique(). Rust uses
+# 32-bit positions, so longer vectors go to base.
+duplicated_in_rust <- function(x, incomparables, fromLast) {
+  isFALSE(incomparables) &&
+    is_bool(fromLast) &&
+    length(x) >= RUST_MIN &&
+    length(x) <= .Machine$integer.max &&
+    is.null(dim(x)) &&
+    is_dup_class(x) &&
+    (is.integer(x) || is.double(x) || is.character(x) || plain_factor(x))
 }
 
 # A factor that isn't a subclass, which may have its own duplicated() or
@@ -193,12 +207,10 @@ dup_column <- function(a, nthreads) {
     as.integer(a)
   } else if (is.integer(a) || is.double(a) || is.factor(a)) {
     a
+  } else if (is.character(a) && par_pointers_suffice(a, a, nthreads)) {
+    a
   } else if (is.character(a)) {
-    if (par_pointers_suffice(a, a, nthreads)) {
-      a
-    } else {
-      # Equal positions of first occurrences mean equal strings.
-      par_match(a, a, nthreads = nthreads)
-    }
+    # Equal positions of first occurrences mean equal strings.
+    par_match(a, a, nthreads = nthreads)
   }
 }
