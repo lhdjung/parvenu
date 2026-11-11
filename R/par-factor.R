@@ -1,28 +1,32 @@
 #' Make a factor, or count values, in parallel
 #'
-#' @description `par_factor()` is [base::factor()] with the same results, and
-#'   `par_table()` is [base::table()]. Both spend most of their time finding
-#'   the distinct values and the position of each element among them, which
-#'   here [par_unique()] and [par_match()] do on several threads; sorting
-#'   the levels stays with base R.
+#' @description Same results as base, but faster for large inputs:
+#'   - `par_factor()` for [factor()].
+#'   - `par_table()` for [table()].
 #'
-#' @details `factor()` of 1e7 strings in 1e5 levels takes about 0.8s in
-#'   base R; this takes about 0.5s, most of it sorting the levels. For 1e7
-#'   integers in 1e6 levels, 0.85s becomes 0.3s, most of it making the
-#'   levels' strings. `table()` of 1e7 integers takes about 1s in base,
-#'   here 0.45s; the rest is R's own counting. A double vector is
-#'   tabulated by its printed values, as in base, which takes seconds for
-#'   1e7 of them either way.
+#' @details Both spend most of their time finding the distinct values and the
+#'   position of each element among them. Here, [par_unique()] and
+#'   [par_match()] do that on several threads. Sorting the levels stays with
+#'   base R.
+#'
+#'   `factor()` of 1e7 strings in 1e5 levels takes about 0.8s in base R and
+#'   0.5s here, most of it sorting the levels. For 1e7 integers in 1e6 levels,
+#'   0.85s becomes 0.3s, most of it making the levels' strings. `table()` of
+#'   1e7 integers takes about 1s in base and 0.45s here. The rest is R's own
+#'   counting.
+#'
+#'   A double vector is tabulated by its printed values, as in base. That
+#'   takes seconds for 1e7 of them either way.
 #'
 #' @param x A vector, as in [base::factor()].
-#' @param nmax Ignored: a hint for base's hash table, kept so that the
+#' @param nmax Ignored. It is a hint for base's hash table, kept so that the
 #'   arguments are in base's order.
 #' @inheritParams base::factor
 #' @inheritParams base::table
 #' @inheritParams par_match
 #'
-#' @returns `par_factor()`: a factor, as [base::factor()] returns it, with the
-#'   names of `x`. `par_table()`: a `table`, as [base::table()] returns it.
+#' @returns `par_factor()`: a factor, as [factor()] returns it, with the names
+#'   of `x`. `par_table()`: a `table`, as [table()] returns it.
 #'
 #' @export
 #'

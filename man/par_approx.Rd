@@ -81,14 +81,14 @@ As \code{\link[=approx]{approx()}}: a list of \code{x}, the points \code{xout}, 
 values there.
 }
 \description{
-Like \code{\link[=approx]{approx()}}, with the same results: interpolates between
-the points \code{x} and \code{y} at each of \code{xout}, with a binary search per point
-on several threads.
+Returns the same as base \code{\link[=approx]{approx()}}: interpolates between the
+points \code{x} and \code{y} at each of \code{xout}. Each point gets a binary search, on
+several threads.
 }
 \details{
-With at least 1e4 numbers in \code{xout} and \code{na.rm = TRUE}, the
-points are prepared by base R's \code{\link[=approxfun]{approxfun()}}, which also checks the
-arguments, and Rust interpolates. Anything else goes to \code{\link[=approx]{approx()}}.
+Computed in Rust when \code{xout} has at least 1e4 numbers and
+\code{na.rm = TRUE}. The points are first prepared by base \code{\link[=approxfun]{approxfun()}},
+which also checks the arguments. Anything else goes to \code{\link[=approx]{approx()}}.
 }
 \examples{
 par_approx(c(1, 2, 4), c(10, 20, 0), xout = c(1.5, 3, 5))

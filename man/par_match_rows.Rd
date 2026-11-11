@@ -12,8 +12,8 @@ par_match_rows(
 )
 }
 \arguments{
-\item{x}{Rows to look up: a data frame, or a list of vectors as long as
-each other.}
+\item{x}{Rows to look up: a data frame, or a list of vectors of equal
+length.}
 
 \item{table}{Rows to look them up in, in the same form, with as many
 columns as \code{x}.}
@@ -28,24 +28,26 @@ too small to keep that many threads busy get fewer, and more threads than
 cores count as all cores.}
 }
 \value{
-An integer vector with one element per row of \code{x}: the first
-row of \code{table} equal to it, or \code{nomatch} if there is none.
-\code{par_match_rows(x, table, nomatch = 0L) > 0L} tells which rows of \code{x}
+An integer vector with one element per row of \code{x}: the first row
+of \code{table} equal to it, or \code{nomatch} if there is none. Use
+\code{par_match_rows(x, table, nomatch = 0L) > 0L} to find which rows of \code{x}
 are in \code{table}.
 }
 \description{
-For each row of \code{x}, the position of the first row of
-\code{table} that is equal to it in every column, as in a join on several
-key columns. Columns are paired by position, not by name, and each pair
-is compared as \code{par_match()} compares vectors: \code{1L} matches \code{1}, a
-factor matches by its levels, and \code{NA} matches \code{NA}.
+Finds, for each row of \code{x}, the position of the first row of
+\code{table} that is equal to it in every column. This is a join on several
+key columns.
 }
 \details{
-Whole rows are hashed in parallel, so this costs about as much
-as one \code{par_match()} call, however many columns there are. Integer,
-double, character, Date, and POSIXct columns, and factors, are compared
-in Rust as they are; for other pairs of columns, \code{par_match()} first
-turns each into the positions of first occurrences in \code{table}.
+Columns are paired by position, not by name. Each pair is compared
+as \code{par_match()} compares vectors: \code{1L} matches \code{1}, a factor matches by
+its levels, and \code{NA} matches \code{NA}.
+
+Whole rows are hashed in parallel, so this costs about as much as one
+\code{par_match()} call, however many columns there are. Integer, double,
+character, Date, POSIXct, and factor columns are compared in Rust as they
+are. Other columns are first turned by \code{par_match()} into the positions of
+first occurrences in \code{table}.
 }
 \examples{
 orders <- data.frame(customer = c(1L, 2L, 1L), year = c(2025, 2025, 2026))

@@ -29,17 +29,17 @@ too small to keep that many threads busy get fewer, and more threads than
 cores count as all cores.}
 }
 \value{
-As \code{\link[base:rank]{base::rank()}}: the ranks, a double vector for \code{"average"} and an
+As \code{\link[bit64:bit64S3]{bit64::rank()}}: the ranks, a double vector for \code{"average"} and an
 integer one otherwise, with the names of \code{x}.
 }
 \description{
-Like \code{\link[base:rank]{base::rank()}}, with the same results, but the values are
-sorted on several threads. Base R's \code{rank()} is slow where values tie:
-it takes seconds for a million doubles.
+Returns the same as base \code{\link[bit64:bit64S3]{bit64::rank()}}, but sorts the values on
+several threads. Base \code{rank()} is slow where values tie: it takes seconds
+for a million doubles.
 }
 \details{
-Integer and double vectors and factors of at least 1e4 elements
-are ranked in Rust. Anything else goes to base R, as does
+Computed in Rust for integer and double vectors and factors of at
+least 1e4 elements. Anything else goes to base R. So does
 \code{ties.method = "random"}, which draws random numbers.
 }
 \examples{

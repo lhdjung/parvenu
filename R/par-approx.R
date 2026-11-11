@@ -1,12 +1,12 @@
 #' Interpolate linearly, in parallel
 #'
-#' @description Like [approx()], with the same results: interpolates between
-#'   the points `x` and `y` at each of `xout`, with a binary search per point
-#'   on several threads.
+#' @description Returns the same as base [approx()]: interpolates between the
+#'   points `x` and `y` at each of `xout`. Each point gets a binary search, on
+#'   several threads.
 #'
-#' @details With at least 1e4 numbers in `xout` and `na.rm = TRUE`, the
-#'   points are prepared by base R's [approxfun()], which also checks the
-#'   arguments, and Rust interpolates. Anything else goes to [approx()].
+#' @details Computed in Rust when `xout` has at least 1e4 numbers and
+#'   `na.rm = TRUE`. The points are first prepared by base [approxfun()],
+#'   which also checks the arguments. Anything else goes to [approx()].
 #'
 #' @inheritParams stats::approx
 #' @inheritParams par_match

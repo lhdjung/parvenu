@@ -1,25 +1,28 @@
-#' Multithreaded `duplicated()`
+#' Multithreaded `duplicated()` and `unique()`
 #'
-#' @description Same results as base [duplicated()], but much faster for
-#'   large inputs. For a data frame, rows are compared, as in base.
+#' @description
+#'   - `par_duplicated()` returns the same as base [duplicated()], but much
+#'   faster for large inputs. For a data frame, rows are compared, as in base.
+#'   - `par_unique()` behaves like base [unique()] but is much faster for large
+#'   inputs.
+#'   - `par_any_duplicated()` behaves like base [anyDuplicated()]: it finds the
+#'   position of the first duplicate (or `0` if there is none). It is much
+#'   faster where the first duplicate comes late or not at all.
 #'
-#'   `par_unique()` is base [unique()] on the same machinery, and
-#'   `length(par_unique(x))` counts the distinct elements.
-#'   `par_any_duplicated()` is base [anyDuplicated()]: the position of the
-#'   first duplicate, or `0` if there is none. Base stops at the first, so
-#'   it is quick where one comes early; this checks the first 65536
-#'   elements (the last, with `fromLast`) that way before marking all.
+#' @details Computed in Rust when `x` has at least 1e4 elements (or rows) and is
+#'   an integer, double, or string vector, a factor, a Date, or a POSIXct, or a
+#'   data frame of such columns and logical ones. Anything else goes to base
+#'   [duplicated()] unchanged.
 #'
-#' @details Computed in Rust when `x` has at least 1e4 elements (or rows)
-#'   and is an integer, double, or string vector, a factor, a Date, or a
-#'   POSIXct, or a data frame of such columns and logical ones. Anything else
-#'   goes to base [duplicated()] unchanged.
+#'   Like `par_match()`, this hashes `x` in parallel. It marks the duplicates
+#'   while it builds the hash table, so it never looks the elements up a
+#'   second time, as `par_match(x, x) != seq_along(x)` would. `par_unique()`
+#'   collects the first occurrences instead, so it never subsets `x` either.
 #'
-#'   Like `par_match()`, this hashes `x` in parallel, but it marks the
-#'   duplicates while it builds the hash table, so it never looks the
-#'   elements up a second time, as `par_match(x, x) != seq_along(x)` would.
-#'   `par_unique()` collects the first occurrences instead of marking the
-#'   duplicates, so it never subsets `x` by the marks either.
+#'   Base [anyDuplicated()] stops at the first duplicate, so it is quick when
+#'   one comes early. `par_any_duplicated()` checks the first 65536 elements
+#'   (the last, with `fromLast`) that way. If none is there, it searches the
+#'   whole vector.
 #'
 #' @param x A vector or data frame.
 #' @param incomparables Values that are never marked as duplicates, as in

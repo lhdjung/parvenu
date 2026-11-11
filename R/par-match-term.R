@@ -4,50 +4,48 @@
 #'
 #' - `par_match_term()` finds the index of the first term in `terms` it
 #'   contains. It is like `match()` for substrings.
-#' - `par_count_term()` counts every hit of every term instead, for scoring
-#'   strings against a lexicon, such as positive and negative words. With
-#'   `weights`, it sums a score per hit instead, as for a lexicon that rates
-#'   words from -5 to 5.
-#' - `par_which_term()` gives every term each string contains, not just the
-#'   first, for tagging: an abstract with every drug it names.
-#' - `par_match_term_all()` gives every pair of a string and a term it
-#'   contains, with the number of hits: a document-term matrix in long form.
+#' - `par_count_term()` counts every hit of every term, such as to score
+#'   strings against a lexicon of positive and negative words. With
+#'   `weights`, it sums a score per hit instead.
+#' - `par_which_term()` finds every term the string contains, such as every
+#'   drug an abstract names.
+#' - `par_match_term_all()` returns every pair of a string and a term it
+#'   contains, with the number of hits. This is a document-term matrix in long
+#'   form.
 #'
 #' @details Terms are literal, as in `grepl(fixed = TRUE)`, so no character
-#'   needs escaping by default. However, with `fixed = FALSE`, the terms are
-#'   regular expressions.
+#'   needs escaping. With `fixed = FALSE`, they are regular expressions.
 #'
-#'   Order sets priority: if a string contains several terms, the one earliest
+#'   Order sets priority. If a string contains several terms, the one earliest
 #'   in `terms` wins, wherever it occurs in the string. Put specific terms
 #'   before general ones, such as `"new york"` before `"york"`.
 #'
-#'   All terms are compiled into one Aho-Corasick automaton, which finds every
+#'   All terms are compiled into one Aho-Corasick automaton. It finds every
 #'   occurrence of every term in a single pass over each string, however many
-#'   terms there are. The threads read the strings straight from R's memory, as
-#'   data.table does. The last automaton is kept, so calls that repeat the same
-#'   `terms` don't build it again.
+#'   terms there are. The last automaton is kept, so calls that repeat the same
+#'   `terms` don't build it again. The threads read the strings straight from
+#'   R's memory, as data.table does.
 #'
-#'   With `fixed = FALSE`, the terms are compiled into one regex set instead,
-#'   which also says in one pass which of them match a string. That is much
-#'   slower than the automaton, but much faster than a regex per term.
+#'   With `fixed = FALSE`, the terms are compiled into one regex set instead.
+#'   It also finds in one pass which terms match a string. That is much slower
+#'   than the automaton, but much faster than a regex per term.
 #'
 #' @param x A string vector, or an object convertible by [as.character()].
 #' @param terms A string vector of literal strings to find. `NA` is not
 #'   allowed.
 #' @param ignore_case If `TRUE`, letters match regardless of case, in any
-#'   script: `"é"` matches `"É"`. ASCII letters cost nothing extra; strings
+#'   script: `"é"` matches `"É"`. ASCII letters cost nothing extra. Strings
 #'   with other characters are lowercased first. With `fixed = FALSE`, this
 #'   is `(?i)`.
 #' @param whole_word If `TRUE`, a term counts only where it isn't part of a
-#'   longer word: the characters right before and after it must not be
-#'   word characters, those `\\w` matches: letters, digits, and marks (such
-#'   as an accent written as a character of its own) in any script, and
-#'   `_`. `"york"` then matches `"new york"` and `"york, uk"`, but not
-#'   `"yorkshire"`. An apostrophe
-#'   between two such characters joins them into one word, so `"won"`
-#'   doesn't match `"won't"`, nor `"heaven"` `"heaven's"`; this holds for
-#'   `'` and the curly `\u2019`. With `fixed = FALSE`, the same goes for a
-#'   term's match.
+#'   longer word. `"york"` then matches `"new york"` and `"york, uk"`, but not
+#'   `"yorkshire"`. The characters right before and after the term must not
+#'   be word characters, those `\\w` matches. These are letters, digits, and
+#'   marks (such as an accent written as a character of its own) in any
+#'   script, and `_`. An apostrophe (`'` or the curly `\u2019`) between two
+#'   word characters joins them into one word. So `"won"` doesn't match
+#'   `"won't"`, nor `"heaven"` `"heaven's"`. With `fixed = FALSE`, the same
+#'   goes for a term's match.
 #'
 #'   If `"start"`, a term must start a word but may end inside one, as a
 #'   prefix: `"happ"` matches `"happy"` and `"happiness"`, but not
@@ -55,31 +53,31 @@
 #' @param fixed If `FALSE`, `terms` are regexes, in the syntax of
 #'   [par_detect()].
 #' @param weights For `par_count_term()`: `NULL` to count hits, or a numeric
-#'   vector as long as `terms`, without `NA`, to sum the weight of each term
-#'   at each of its hits.
+#'   vector as long as `terms`, without `NA`. Each hit then adds the weight of
+#'   its term, as for a lexicon that rates words from -5 to 5.
 #' @inheritParams par_match
 #'
-#' @returns An integer vector as long as `x`, `NA` where `x` is `NA`:
-#'   - `par_match_term()`: the position in `terms` of the first term found in
-#'   each string, or `NA` if none is found. Use
-#'   `terms[par_match_term(x, terms)]` to get the terms themselves.
-#'   - `par_count_term()`: the number of hits in each string. Every
-#'   occurrence of every term counts, also where they overlap: `"new york"`
-#'   has two hits for `c("new york", "york")`, and a term listed twice counts
-#'   twice. For regexes, each term's matches are counted as [par_count()]
-#'   counts them, which don't overlap. With `weights`, a double vector: the
-#'   sum of the weights of the hits, `0` if none.
-#'
-#'   `par_which_term()` returns a list as long as `x` instead: for each
-#'   string, the positions in `terms` of every term found in it, in
-#'   increasing order and each once, `integer(0)` if none, or `NA` where `x`
-#'   is `NA`.
-#'
-#'   `par_match_term_all()` returns a data frame with one row per pair,
-#'   sorted by `x` and then by `term`: `x`, a position in `x`, `term`, a
-#'   position in `terms` found there, and `n`, the number of its hits, as
-#'   `par_count_term()` counts them. Strings with no term, and `NA`, have
-#'   no rows.
+#' @returns
+#'   - `par_match_term()`: an integer vector as long as `x`, with the position
+#'   in `terms` of the first term found in each string. `NA` if none is found,
+#'   or where `x` is `NA`. Use `terms[par_match_term(x, terms)]` to get the
+#'   terms themselves.
+#'   - `par_count_term()`: an integer vector as long as `x`, with the number of
+#'   hits in each string, or `NA` where `x` is `NA`. Every occurrence of every
+#'   term counts, also where they overlap. So `"new york"` has two hits for
+#'   `c("new york", "york")`, and a term listed twice counts twice. For
+#'   regexes, each term's matches are counted as [par_count()] counts them,
+#'   which don't overlap. With `weights`, it returns a double vector: the sum
+#'   of the weights of the hits, `0` if none.
+#'   - `par_which_term()`: a list as long as `x`. Each element has the
+#'   positions in `terms` of every term found in the string, in increasing
+#'   order and each once. It is `integer(0)` if none, or `NA` where `x` is
+#'   `NA`.
+#'   - `par_match_term_all()`: a data frame with one row per pair, sorted by
+#'   `x` and then by `term`. Column `x` is a position in `x`, `term` is a
+#'   position in `terms` found there, and `n` is the number of its hits, as
+#'   `par_count_term()` counts them. Strings with no term, and `NA`, have no
+#'   rows.
 #'
 #' @export
 #'
@@ -224,18 +222,20 @@ par_match_term_all <- function(
 #' Replace dictionary terms, in parallel
 #'
 #' @description Replaces every term of `terms` in each string with its
-#'   replacement, in one pass however many terms there are, such as to
-#'   normalize spellings, expand abbreviations, or redact names. It does
-#'   what a `gsub(fixed = TRUE)` per term would, but in one pass, so a
-#'   replacement is never searched again for the terms after it.
+#'   replacement, such as to normalize spellings, expand abbreviations, or
+#'   redact names. It does what a `gsub(fixed = TRUE)` per term would, but in
+#'   one pass, however many terms there are.
 #'
-#' @details Hits don't overlap. The leftmost hit is replaced first, and the
-#'   search goes on after it. If several terms start at the same place, the
-#'   one earliest in `terms` wins, so put longer terms before their prefixes,
-#'   such as `"new york"` before `"new"`.
+#' @details Since it is one pass, a replacement is never searched again for
+#'   the terms after it.
 #'
-#' @param terms A string vector of literal strings to find, without `NA`,
-#'   or `""` unless `fixed = FALSE`.
+#'   Hits don't overlap. The leftmost hit is replaced first, and the search
+#'   goes on after it. If several terms start at the same place, the one
+#'   earliest in `terms` wins. So put longer terms before their prefixes, such
+#'   as `"new york"` before `"new"`.
+#'
+#' @param terms A string vector of literal strings to find. `NA` is not
+#'   allowed, nor `""` unless `fixed = FALSE`.
 #' @param replacement A string vector as long as `terms`, the replacement for
 #'   each, or one string for all of them. With `fixed = FALSE`, `$1` stands
 #'   for the first capture group of the term's match, as in

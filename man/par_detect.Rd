@@ -44,39 +44,45 @@ where it doesn't.
 }
 }
 \description{
-Like \code{grepl(pattern, x)}, run over several threads, but with
-the syntax of Rust's \href{https://docs.rs/regex/latest/regex/#syntax}{regex}
-crate instead of R's. Most patterns mean the same in both. The
-differences:
+\itemize{
+\item \code{par_detect()} is like \code{grepl(pattern, x)}.
+\item \code{par_count()} counts the matches in each string, as many as
+\code{\link[=gregexpr]{gregexpr()}} would find, but without building them.
+}
+
+Both run on several threads. They use the syntax of Rust's
+\href{https://docs.rs/regex/latest/regex/#syntax}{regex} crate instead of R's.
+Most patterns mean the same in both. See Details for the differences.
+}
+\details{
+The syntax differs from R's in these ways:
 \itemize{
 \item No backreferences (\verb{\\\\1}) or lookaround (\verb{(?=...)}). In return, time
 grows only linearly with the length of the string. Engines that
 backtrack, such as PCRE (\code{grepl(perl = TRUE)}), try every way a pattern
-can split the string, which can take exponentially long: \verb{^(a+)+$}
+can split the string. That can take exponentially long: \verb{^(a+)+$}
 against 25 \code{a}s and a \code{!} exceeds PCRE's match limit.
 \item Unicode by default: \verb{\\\\d}, \verb{\\\\w}, and \verb{\\\\s} match any Unicode digit,
 word, or space character. Write \verb{[0-9]} or \verb{(?-u:\\\\d)} for ASCII only.
 \item Flags go in the pattern: \code{(?i)} ignores case.
-\item \code{NA} gives \code{NA}, where \code{\link[=grepl]{grepl()}} gives \code{FALSE}.
+\item \code{NA} returns \code{NA}, where \code{\link[=grepl]{grepl()}} returns \code{FALSE}.
 }
 
-\code{par_count()} counts the matches instead: how many \code{\link[=gregexpr]{gregexpr()}} would
-find, without building them. The counts differ only for patterns that
-can match the empty string, such as \code{""}, \code{"a*"}, or \code{"\\\\b"}, because
-the two engines treat empty matches in opposite ways:
+The counts of \code{par_count()} differ from \code{\link[=gregexpr]{gregexpr()}} only for patterns
+that can match the empty string, such as \code{""}, \code{"a*"}, or \code{"\\\\b"}. The
+two engines treat empty matches in opposite ways:
 \itemize{
 \item At the end of a string, \code{par_count()} counts an empty match and
-\code{\link[=gregexpr]{gregexpr()}} doesn't (unless the string itself is empty): \code{""} has 4
+\code{\link[=gregexpr]{gregexpr()}} doesn't (unless the string itself is empty). So \code{""} has 4
 matches in \code{"abc"}, where \code{\link[=gregexpr]{gregexpr()}} finds 3.
 \item Right after a non-empty match, \code{\link[=gregexpr]{gregexpr()}} counts an empty match and
-\code{par_count()} doesn't: \code{"a*"} has 4 matches in \code{"banana"}, an empty one
-before the \code{"b"} and the three \code{"a"}s. \code{\link[=gregexpr]{gregexpr()}} also finds an empty
-one after each of the first two \code{"a"}s, so 6.
+\code{par_count()} doesn't. So \code{"a*"} has 4 matches in \code{"banana"}: an empty
+one before the \code{"b"}, and the three \code{"a"}s. \code{\link[=gregexpr]{gregexpr()}} also finds an
+empty one after each of the first two \code{"a"}s, so 6.
 }
-}
-\details{
-The threads read the strings straight from R's memory, as
-data.table does.
+
+The threads read the strings straight from R's memory, as data.table
+does.
 }
 \examples{
 par_detect(c("apple", "banana", NA), "an+a", nthreads = 2)

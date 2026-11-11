@@ -15,17 +15,17 @@ families of functions:
   the set operations, `as.Date()`, `as.POSIXct()`, `rank()`, `rowsum()`,
   and `approx()`, plus row matching on several key columns.
 - Text search: regex detection, counting, location, extraction, and
-  replacement, and dictionary lookup and replacement of many terms at
+  replacement. Also dictionary lookup and replacement of many terms at
   once.
 
 `par_match()`, `%par_in%`, `par_duplicated()`, `par_unique()`,
 `par_any_duplicated()`, `par_union()`, `par_intersect()`,
 `par_setdiff()`, `par_factor()`, `par_table()`, `par_find_interval()`,
-and the functions under [Dates, ranks, and
-sums](#dates-ranks-and-sums) behave exactly like base R, so they are
-drop-in replacements. `par_detect()` is `grepl()` with the syntax of
-Rust’s [regex crate](https://docs.rs/regex/latest/regex/#syntax), which
-never backtracks.
+and the functions under [Dates, ranks, and sums](#dates-ranks-and-sums)
+behave exactly like base R, so they are drop-in replacements.
+`par_detect()` is `grepl()` with the syntax of Rust’s [regex
+crate](https://docs.rs/regex/latest/regex/#syntax), which never
+backtracks.
 
 The gains are largest where base R is slow and the work is bound by CPU:
 matching text against a large dictionary of terms, and looking up
@@ -33,10 +33,15 @@ millions of keys.
 
 ## When the wait matters
 
-Many single calls take base R a second or less, even on millions of elements, and a second is a fine wait. The wait grows past that in three ways: two sizes multiply, such as strings and terms; the input runs to tens of millions; or a call repeats, on every keystroke or in every resample. Some cases, on 8 cores (`bench/at-scale.R` and the other scripts in `bench/`):
+Many single calls take base R a second or less, even on millions of
+elements. A second is a fine wait. It grows longer in three ways: two
+sizes multiply, such as strings and terms; the input runs to tens of
+millions; or a call repeats, on every keystroke or in every resample.
+Some cases, on 8 cores (`bench/at-scale.R` and the other scripts in
+`bench/`):
 
 | Case | Base R | parvenu |
-|---|---|---|
+|----|----|----|
 | 10,000 terms in 100,000 strings | 38s | 4.3ms |
 | A capture group from each of 1 million strings | 18s | 0.21s |
 | Every match in 1 million strings | 11s | 0.21s |
@@ -44,20 +49,43 @@ Many single calls take base R a second or less, even on millions of elements, an
 | 10 million times from web server logs | 53s | 0.48s |
 | 10 million times with milliseconds | 2.6 min | 0.21s |
 | A search box over 10 million rows, per keystroke | 0.40s | 39ms |
-| Spearman's correlation in 1,000 bootstrap resamples of 200,000 rows | 1.6 min | 18s |
+| Spearman’s correlation in 1,000 bootstrap resamples of 200,000 rows | 1.6 min | 18s |
 
-- **Large dictionaries.** Medical vocabularies, gene names, and place names run to tens of thousands of terms. Base R's regex engines refuse an alternation that long: PCRE stops near 3,400 terms of 8 letters, so what's left is a loop over the terms, here with `grepl(fixed = TRUE)`. stringi takes an alternation of 10,000 terms, but needs 43s. Both grow with strings times terms, so a corpus of a million abstracts takes them minutes.
-- **Regexes that return more than `TRUE` or `FALSE`.** `regmatches()` on `regexec()` or `gregexpr()` takes 9-18s per million strings, stringi 0.2-5s, and parvenu 0.02-0.21s.
-- **Many times.** A month of logs from a site that serves a few requests a second holds 10 million times such as `"07/Nov/2026:21:43:00 +0000"`, read with `format = "%d/%b/%Y:%H:%M:%S %z"`. Such times repeat within a second, so parsing only `unique()` times and matching them back brings base R down to 17s. Times with milliseconds, as from sensors or event streams, don't repeat; given `format`, base R takes 1.3 minutes instead of 2.6. `data.table::fread()` and readr parse ISO dates as they read, so this concerns times that reach R as text: other formats, or times extracted from log lines.
-- **Interactive search.** A Shiny filter searches again on every keystroke, and a response feels instant only within about a tenth of a second. Half a second is fine for one search, but as a lag after every key it makes the app feel sluggish. Case-insensitive search takes 0.66s in base R and 57ms in parvenu.
-- **Resampling.** A bootstrap of Spearman's correlation ranks both columns in each resample. `data.table::frank()` takes 28s for the same.
+- **Large dictionaries.** Medical vocabularies, gene names, and place
+  names run to tens of thousands of terms. Base R’s regex engines refuse
+  an alternation that long: PCRE stops near 3,400 terms of 8 letters.
+  What’s left is a loop over the terms, here with `grepl(fixed = TRUE)`.
+  stringi takes an alternation of 10,000 terms, but needs 43s. Both grow
+  with strings times terms, so a corpus of a million abstracts takes
+  them minutes.
+- **Regexes that return more than `TRUE` or `FALSE`.** `regmatches()` on
+  `regexec()` or `gregexpr()` takes 9-18s per million strings, stringi
+  0.2-5s, and parvenu 0.02-0.21s.
+- **Many times.** A month of logs from a site that serves a few requests
+  a second holds 10 million times such as
+  `"07/Nov/2026:21:43:00 +0000"`, read with
+  `format = "%d/%b/%Y:%H:%M:%S %z"`. Such times repeat within a second,
+  so parsing only `unique()` times and matching them back brings base R
+  down to 17s. Times with milliseconds, as from sensors or event
+  streams, don’t repeat. Given `format`, base R takes 1.3 minutes for
+  them instead of 2.6. `data.table::fread()` and readr parse ISO dates
+  as they read. So this concerns times that reach R as text: other
+  formats, or times extracted from log lines.
+- **Interactive search.** A Shiny filter searches again on every
+  keystroke, and a response feels instant only within about a tenth of a
+  second. Half a second is fine for one search, but as a lag after every
+  key it makes the app feel sluggish. Case-insensitive search takes
+  0.66s in base R and 57ms in parvenu.
+- **Resampling.** A bootstrap of Spearman’s correlation ranks both
+  columns in each resample. `data.table::frank()` takes 28s for the
+  same.
 
 ## Dictionary matching
 
 Which of 100,000 strings mention any of 1,000 terms? A backtracking
 engine tries each term at each position. `par_detect()` compiles the
-alternation once, into an automaton that finds all terms in one pass,
-and splits the strings across threads.
+alternation once into an automaton that finds all terms in one pass. It
+splits the strings across threads.
 
 ``` r
 library(parvenu)
@@ -112,9 +140,9 @@ plot(results)
     #> # A tibble: 3 × 2
     #>   expression   median
     #>   <bch:expr> <bch:tm>
-    #> 1 base         14.91s
-    #> 2 stringi       8.35s
-    #> 3 parvenu     18.32ms
+    #> 1 base          14.9s
+    #> 2 stringi        8.2s
+    #> 3 parvenu      19.7ms
 
 <img src="https://raw.githubusercontent.com/lhdjung/parvenu/figures/man/figures/README-dictionary-1.png" alt="Timings on a log scale: parvenu takes milliseconds, stringi and base R take seconds." width="100%" />
 
@@ -128,15 +156,15 @@ lowercase both the strings and the terms.
 
 ### Which term?
 
-`par_match_term()` says which term each string contains, as a position
-in `terms`: `match()` for substrings. If a string contains several
-terms, the one earliest in `terms` wins, so put specific terms such as
+`par_match_term()` finds which term each string contains, as a position
+in `terms`. It is `match()` for substrings. If a string contains several
+terms, the one earliest in `terms` wins. So put specific terms such as
 `"new york"` before general ones such as `"york"`. The terms are
-literal, so they need no escaping, and `ignore_case = TRUE` ignores case
-in any script, at full speed for ASCII text. `whole_word = TRUE` skips
-hits inside longer words, so `"york"` matches `"york, uk"` but not
-`"yorkshire"`, and `whole_word = "start"` matches prefixes, such as
-`"happ"` in `"happiness"`.
+literal, so they need no escaping. `ignore_case = TRUE` ignores case in
+any script, at full speed for ASCII text. `whole_word = TRUE` skips hits
+inside longer words, so `"york"` matches `"york, uk"` but not
+`"yorkshire"`. `whole_word = "start"` matches prefixes, such as `"happ"`
+in `"happiness"`.
 
 ``` r
 places <- c("new york", "york", "paris")
@@ -184,21 +212,20 @@ plot(results)
     #>   expression              median
     #>   <bch:expr>            <bch:tm>
     #> 1 stringi                  4.96s
-    #> 2 parvenu (default)       2.65ms
-    #> 3 parvenu (ignore case)   2.58ms
+    #> 2 parvenu (default)       2.55ms
+    #> 3 parvenu (ignore case)    2.6ms
 
 <img src="https://raw.githubusercontent.com/lhdjung/parvenu/figures/man/figures/README-term-1.png" alt="Timings on a log scale: parvenu takes milliseconds, a stringi loop over the terms takes seconds." width="100%" />
 
-To count hits instead, `par_count_term()` gives the number of term
-occurrences in each string, or with `weights`, their summed scores, as
-for scoring text against a sentiment lexicon. `par_which_term()` gives
-every term each string contains, for tagging, and `par_replace_term()`
-replaces each term with its replacement: 1,000 terms in 100,000 strings
-take 21ms, where stringi’s
+`par_count_term()` counts the hits of the terms in each string. With
+`weights`, it sums their scores, as for scoring text against a sentiment
+lexicon. `par_which_term()` finds every term each string contains, for
+tagging. `par_replace_term()` replaces each term with its replacement:
+1,000 terms in 100,000 strings take 21ms, where stringi’s
 `stri_replace_all_fixed(vectorize_all = FALSE)` takes 3.7s. With
 `fixed = FALSE`, the terms of all four `_term` functions are regexes,
-all searched in one pass: slower than literal terms, but several times
-faster than one `par_detect()` per term.
+searched in one pass. That is slower than literal terms, but several
+times faster than one `par_detect()` per term.
 
 ## General matching
 
@@ -229,36 +256,36 @@ plot(results)
     #> # A tibble: 3 × 2
     #>   expression   median
     #>   <bch:expr> <bch:tm>
-    #> 1 base        253.1ms
-    #> 2 collapse    181.7ms
-    #> 3 parvenu      19.1ms
+    #> 1 base        251.6ms
+    #> 2 collapse    179.6ms
+    #> 3 parvenu      14.4ms
 
 <img src="https://raw.githubusercontent.com/lhdjung/parvenu/figures/man/figures/README-match-1.png" alt="Timings on a log scale: parvenu is about ten times faster than collapse and base R." width="100%" />
 
 `par_match()` handles integer, double, character, Date, and POSIXct
 vectors, and factors by their levels. Other classes, and inputs below
-10,000 elements, are handled by base `match()`. Downstream, `%par_in%`
-replaces `%in%`, and `par_in()` is the same as a regular function.
+10,000 elements, go to base `match()`. `%par_in%` replaces `%in%`, and
+`par_in()` is the same as a regular function.
 
 Both sides are hashed in parallel, so a join-like lookup of 10 million
 keys into 10 million others takes 0.1 seconds for integers and 0.2 for
 strings. The numbers behind the comparison with collapse are in
 `bench/`.
 
-`par_duplicated()` is `duplicated()` on the same hash tables, built in
-parallel, and compares the rows of data frames as base does;
-`par_unique()` is `unique()`, collecting the first occurrences in the
-same pass. `par_match_rows()` matches rows on several key columns at
-once, as in a join: it hashes whole rows in parallel, so a lookup of 10
-million rows into 10 million others takes a fraction of a second, where
-pasting the columns into strings for `match()` takes seconds per
+`par_duplicated()` returns the same as `duplicated()`, using the same
+parallel hash tables. Like base, it compares the rows of data frames.
+`par_unique()` returns the same as `unique()` and collects the first
+occurrences in the same pass. `par_match_rows()` matches rows on several
+key columns at once, as in a join. It hashes whole rows in parallel, so
+a lookup of 10 million rows into 10 million others takes a fraction of a
+second. Pasting the columns into strings for `match()` takes seconds per
 million.
 
 `par_find_interval()` bins values by sorted breaks, such as ages into
-age groups, with a binary search per element on all cores. It is
-`findInterval()` under a clearer name, with the same results: 10 million
-values into 10,000 breaks take a few dozen milliseconds, where base
-takes almost a second.
+age groups. It returns the same as `findInterval()` under a clearer
+name, with a binary search per element on all cores. 10 million values
+into 10,000 breaks take a few dozen milliseconds, where base takes
+almost a second.
 
 ## Single calls
 
@@ -279,8 +306,9 @@ the details, and comparisons with collapse, stringi, and data.table):
 ## Dates, ranks, and sums
 
 Some of base R’s slowest functions are not about matching at all. These
-give the same results, to the last bit, and fall back to base R for what
-they don’t cover. At a million dates or ten million numbers, on 8 cores:
+return the same results, to the last bit. They fall back to base R for
+what they don’t cover. At a million dates or ten million numbers, on 8
+cores:
 
 | Function | Replaces | Task | Time | Base R | Speedup |
 |----|----|----|----|----|----|
@@ -290,11 +318,11 @@ they don’t cover. At a million dates or ten million numbers, on 8 cores:
 | `par_rowsum()` | `rowsum()` | 10 million values in 100,000 groups | 0.1s | 1.2s | 12x |
 | `par_approx()` | `approx()` | 10 million points into 10,000 | 0.1s | 0.63s | 6x |
 
-`par_as_posixct()` parses in Rust in any time zone; outside UTC, base
-R's C code places the times, so 1 million take 0.83s over two years, or
-2.1s over 127 years, instead of 12ms (base: 37s).
-`par_rank()` beats `data.table::frank()` (0.61s), while collapse
-sums groups faster than `par_rowsum()` (67ms).
+`par_as_posixct()` parses in Rust in any time zone. Outside UTC, base
+R’s C code places the times, so 1 million take 0.83s over two years, or
+2.1s over 127 years, instead of 12ms (base: 37s). `par_rank()` beats
+`data.table::frank()` (0.61s), while collapse sums groups faster than
+`par_rowsum()` (67ms).
 
 ## Use cases
 
@@ -316,15 +344,15 @@ too small to keep that many threads busy use fewer.
 
 [mizu](https://github.com/shikokuchuo/mizu) and
 [mirai](https://mirai.r-lib.org) run any R code in parallel, on pools of
-R processes; [mori](https://github.com/shikokuchuo/mori) shares R
+R processes. [mori](https://github.com/shikokuchuo/mori) shares R
 objects with such processes without copying them. parvenu is narrower:
 it has its own multithreaded versions of particular functions. Use the
 pools for model fits, bootstraps, and any other R code that parvenu
 doesn’t cover. For the functions it does cover, a single parvenu call is
 much faster than splitting the input across workers that each call base
-R. Each worker still runs base R’s code on one core, and the input has
-to reach the workers and the results come back. On 8 cores, with the
-pools already started (`bench/process-pools.R`):
+R. Each worker still runs base R’s code on one core. Also, the input has
+to reach the workers, and the results have to come back. On 8 cores,
+with the pools already started (`bench/process-pools.R`):
 
 | Task | Base R | mizu | mirai | mirai + mori | parvenu |
 |----|----|----|----|----|----|
@@ -332,7 +360,7 @@ pools already started (`bench/process-pools.R`):
 | `match()` of 10 million integers into 1 million keys | 0.25s | 0.62s | 0.37s | 0.29s | 15ms |
 | `as.Date()` on 1 million strings | 4.6s | 1.2s | 0.99s | 0.96s | 7ms |
 
-On one thread, parvenu takes 56ms, 71ms, and 33ms for these tasks, so
+On one thread, parvenu takes 56ms, 71ms, and 33ms for these tasks. So
 most of its lead over base R comes from its own code rather than from
 threads: a regex engine that doesn’t backtrack, a faster hash table, and
 a parser for the common date formats.
@@ -347,17 +375,20 @@ differences:
 - `\d`, `\w`, and `\s` match Unicode by default. Write `[0-9]` or
   `(?-u:\d)` for ASCII.
 - Flags go in the pattern: `(?i)` ignores case.
-- `NA` gives `NA`, where `grepl()` gives `FALSE`.
+- `NA` returns `NA`, where `grepl()` returns `FALSE`.
 
 For example:
 
-```r
+``` r
 grepl("(a)\\1", "aa")      # TRUE
 par_detect("aa", "(a)\\1") # error: backreferences are not supported
+
 grepl("\\d", "٣", perl = TRUE) # FALSE: an Arabic-Indic three
 par_detect("٣", "\\d")         # TRUE
+
 grepl("b", "ABC", ignore.case = TRUE) # TRUE
 par_detect("ABC", "(?i)b")            # TRUE
+
 grepl("a", NA)      # FALSE
 par_detect(NA, "a") # NA
 ```
@@ -365,15 +396,16 @@ par_detect(NA, "a") # NA
 `fixed = TRUE` finds `pattern` as it is, as in `grepl(fixed = TRUE)`.
 `pattern` can also have one element per string, as in stringi.
 
-`par_extract()` gives the first match in each string, or a capture group
-of it, which takes the place of lookaround, and `par_extract_all()`
-every match. `par_locate()` gives where the first match starts and ends,
-as `regexpr()` does. `par_replace()` replaces the first match, as
-`sub()` does, and `par_replace_all()` every match, as `gsub()` does,
-with `$1` instead of `\\1` for a group. Only R’s own thread can make R
-strings, so the more strings change, the more of the time that takes:
-where a tenth of a million strings change, it is about 6 times faster
-than `gsub(perl = TRUE)`, and where all of them do, about twice as fast.
+`par_extract()` returns the first match in each string, or a capture
+group of it, which takes the place of lookaround. `par_extract_all()`
+returns every match. `par_locate()` finds where the first match starts
+and ends, as `regexpr()` does. `par_replace()` replaces the first match,
+as `sub()` does. `par_replace_all()` replaces every match, as `gsub()`
+does. Both use `$1` instead of `\\1` for a group. Only R’s own thread
+can make R strings, so the more strings change, the longer that takes.
+Where a tenth of a million strings change, it is about 6 times faster
+than `gsub(perl = TRUE)`. Where all of them change, it is about twice as
+fast.
 
 ## Installation
 

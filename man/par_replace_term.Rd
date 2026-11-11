@@ -17,8 +17,8 @@ par_replace_term(
 \arguments{
 \item{x}{A string vector, or an object convertible by \code{\link[=as.character]{as.character()}}.}
 
-\item{terms}{A string vector of literal strings to find, without \code{NA},
-or \code{""} unless \code{fixed = FALSE}.}
+\item{terms}{A string vector of literal strings to find. \code{NA} is not
+allowed, nor \code{""} unless \code{fixed = FALSE}.}
 
 \item{replacement}{A string vector as long as \code{terms}, the replacement for
 each, or one string for all of them. With \code{fixed = FALSE}, \verb{$1} stands
@@ -26,20 +26,19 @@ for the first capture group of the term's match, as in
 \code{\link[=par_replace_all]{par_replace_all()}}.}
 
 \item{ignore_case}{If \code{TRUE}, letters match regardless of case, in any
-script: \code{"é"} matches \code{"É"}. ASCII letters cost nothing extra; strings
+script: \code{"é"} matches \code{"É"}. ASCII letters cost nothing extra. Strings
 with other characters are lowercased first. With \code{fixed = FALSE}, this
 is \code{(?i)}.}
 
 \item{whole_word}{If \code{TRUE}, a term counts only where it isn't part of a
-longer word: the characters right before and after it must not be
-word characters, those \verb{\\w} matches: letters, digits, and marks (such
-as an accent written as a character of its own) in any script, and
-\verb{_}. \code{"york"} then matches \code{"new york"} and \code{"york, uk"}, but not
-\code{"yorkshire"}. An apostrophe
-between two such characters joins them into one word, so \code{"won"}
-doesn't match \code{"won't"}, nor \code{"heaven"} \code{"heaven's"}; this holds for
-\verb{'} and the curly \verb{\\u2019}. With \code{fixed = FALSE}, the same goes for a
-term's match.
+longer word. \code{"york"} then matches \code{"new york"} and \code{"york, uk"}, but not
+\code{"yorkshire"}. The characters right before and after the term must not
+be word characters, those \verb{\\\\w} matches. These are letters, digits, and
+marks (such as an accent written as a character of its own) in any
+script, and \verb{_}. An apostrophe (\verb{'} or the curly \verb{\\u2019}) between two
+word characters joins them into one word. So \code{"won"} doesn't match
+\code{"won't"}, nor \code{"heaven"} \code{"heaven's"}. With \code{fixed = FALSE}, the same
+goes for a term's match.
 
 If \code{"start"}, a term must start a word but may end inside one, as a
 prefix: \code{"happ"} matches \code{"happy"} and \code{"happiness"}, but not
@@ -60,16 +59,18 @@ the names of \code{x}, as \code{\link[=gsub]{gsub()}} does.
 }
 \description{
 Replaces every term of \code{terms} in each string with its
-replacement, in one pass however many terms there are, such as to
-normalize spellings, expand abbreviations, or redact names. It does
-what a \code{gsub(fixed = TRUE)} per term would, but in one pass, so a
-replacement is never searched again for the terms after it.
+replacement, such as to normalize spellings, expand abbreviations, or
+redact names. It does what a \code{gsub(fixed = TRUE)} per term would, but in
+one pass, however many terms there are.
 }
 \details{
-Hits don't overlap. The leftmost hit is replaced first, and the
-search goes on after it. If several terms start at the same place, the
-one earliest in \code{terms} wins, so put longer terms before their prefixes,
-such as \code{"new york"} before \code{"new"}.
+Since it is one pass, a replacement is never searched again for
+the terms after it.
+
+Hits don't overlap. The leftmost hit is replaced first, and the search
+goes on after it. If several terms start at the same place, the one
+earliest in \code{terms} wins. So put longer terms before their prefixes, such
+as \code{"new york"} before \code{"new"}.
 }
 \examples{
 par_replace_term(

@@ -1,33 +1,39 @@
 #' Parse dates and times, in parallel
 #'
-#' @description `par_as_date()` is [as.Date()] for strings, and
-#'   `par_as_posixct()` is [as.POSIXct()] for strings, with the same
-#'   results. Base R parses about a million dates in seconds, on one thread;
-#'   these read the strings on several, and give the same results.
+#' @description Same results as base for strings, but much faster for large
+#'   inputs:
+#'   - `par_as_date()` for [as.Date()].
+#'   - `par_as_posixct()` for [as.POSIXct()].
 #'
-#' @details Formats may use `%Y`, `%y`, `%m`, `%b` (also `%B` and `%h`:
-#'   English month names, full or their first three letters, in any case,
-#'   where the `LC_TIME` locale is C or English), `%d`, `%e`, `%j`, `%H`,
+#'   Base R takes seconds to parse a million dates, on one thread.
+#'
+#' @details Formats may use `%Y`, `%y`, `%m`, `%b`, `%d`, `%e`, `%j`, `%H`,
 #'   `%I` with `%p`, `%M`, `%S`, `%OS`, `%z` (an offset such as `+0530`),
-#'   `%F`, `%T`, and `%R`, with a year, and a month and day or a day of the
-#'   year, as the default `tryFormats` do. They are read as [strptime()]
-#'   reads them, quirks included: text after the format is ignored,
-#'   `"24:00:00"` is midnight of the next day, and `"2020-1-5"` is a date.
+#'   `%F`, `%T`, and `%R`. `%B` and `%h` are read as `%b`: English month
+#'   names, full or abbreviated to three letters, in any case. This works
+#'   where the `LC_TIME` locale is C or English. A format needs a year, and a
+#'   month and day or a day of the year, as the default `tryFormats` have.
 #'
-#'   In UTC (`"UTC"`, `"GMT"`, or `""` in a session whose time zone is UTC)
-#'   the parse gives the times. In another time zone, base R's own C code
-#'   places each local time, so a time that doesn't exist there, or occurs
-#'   twice, comes out as in base. That code runs on only two times per
-#'   calendar day for the days that have no change of clock, and on every
-#'   time of the days that do.
+#'   Strings are read as [strptime()] reads them, quirks included. Text after
+#'   the format is ignored, `"24:00:00"` is midnight of the next day, and
+#'   `"2020-1-5"` is a date.
 #'
-#'   Everything else goes to base R: other formats, several formats in
-#'   `format`, month names in other locales, inputs that aren't strings or
-#'   factors, fewer than 1e4 strings, `tryFormats` with `%z` in a time zone
-#'   other than UTC, spaces other than ASCII ones, and seconds written in
-#'   hexadecimal, with more than 15 digits, or as `nan(...)`. So does an
-#'   input that no format fits, which base R reports.
-#'   Factors are turned into strings first.
+#'   In UTC (`"UTC"`, `"GMT"`, or `""` in a session whose time zone is UTC),
+#'   the parse returns the times directly. In other time zones, base R's own
+#'   C code places each local time. So a time that doesn't exist there, or
+#'   occurs twice, comes out as in base. That code runs on only two times per
+#'   day for days without a change of clock, and on every time of days with
+#'   one.
+#'
+#'   Factors are turned into strings first. Everything else goes to base R:
+#'   - other formats, or several formats in `format`
+#'   - month names in other locales
+#'   - inputs that aren't strings or factors, or fewer than 1e4 of them
+#'   - `tryFormats` with `%z` in a time zone other than UTC
+#'   - spaces other than ASCII ones
+#'   - seconds written in hexadecimal, with more than 15 digits, or as
+#'   `nan(...)`
+#'   - an input that no format fits, which base R reports.
 #'
 #' @param x A string vector, or a factor.
 #' @param ... Passed on to base R where it takes over.

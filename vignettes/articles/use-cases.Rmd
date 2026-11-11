@@ -13,23 +13,25 @@ knitr::opts_chunk$set(
 library(parvenu)
 ```
 
-parvenu pays off at 100,000 elements or more, where its functions take
-milliseconds and base R takes seconds or longer: looking up 10,000 terms
+parvenu pays off at 100,000 elements or more. There, its functions take
+milliseconds where base R takes seconds or longer. Looking up 10,000 terms
 in 100,000 strings takes base R 38s, against 4ms. The examples below are
-small so they run quickly. For one call, seconds are often a fine wait.
-They turn into minutes with dictionaries of thousands of terms, with
-capture groups or every match from millions of strings, and with tens of
-millions of times. Where a call repeats, as on every keystroke in a Shiny
-app or in every bootstrap resample, even a fraction of a second adds up.
-The [README](https://github.com/lhdjung/parvenu#when-the-wait-matters) has
-the numbers.
+small so they run quickly.
+
+For one call, seconds are often a fine wait. They turn into minutes with
+dictionaries of thousands of terms, with capture groups or every match from
+millions of strings, and with tens of millions of times. Where a call
+repeats, as on every keystroke in a Shiny app or in every bootstrap
+resample, even a fraction of a second adds up. The
+[README](https://github.com/lhdjung/parvenu#when-the-wait-matters) has the
+numbers.
 
 ## Coding free text with a keyword table
 
 Free text often has to be sorted into categories: bank transactions into
 spending categories, free-text medication fields into drugs, open survey
-answers into codes. A keyword table does this, and `par_match_term()` looks
-up the first keyword each string contains:
+answers into codes. A keyword table does this. `par_match_term()` finds the
+first keyword each string contains:
 
 ```{r}
 transactions <- c(
@@ -66,8 +68,7 @@ Three arguments make this work:
   `"SUPERMART"`, and a short keyword would turn up inside many longer
   words. With it, `"Mart & More"` still matches `"mart"`.
 - **`ignore_case = TRUE`.** Statements mix `"SUPERMART"` and `"Supermart"`.
-  This only folds ASCII letters; for other scripts, apply `tolower()` to
-  both sides.
+  This works in any script, so `"é"` matches `"É"`.
 
 Rows with no keyword get `NA`, which shows what the table still misses:
 
@@ -94,8 +95,8 @@ use `!is.na(par_match_term(x, terms))`.
 
 ## Tagging text with every term it names
 
-For tagging rather than coding, `par_which_term()` gives every term a
-string contains, as positions in `terms`, each once:
+For tagging rather than coding, `par_which_term()` finds every term a
+string contains. It returns their positions in `terms`, each once:
 
 ```{r}
 drugs <- c("aspirin", "ibuprofen", "paracetamol", "codeine")
@@ -119,9 +120,9 @@ data.frame(
 
 ## Terms that are patterns
 
-Where a term has several spellings or forms, `fixed = FALSE` takes regexes
-as terms, in the syntax of `par_detect()`. The earliest term in the list
-still wins:
+Where a term has several spellings or forms, use `fixed = FALSE`. The terms
+are then regexes, in the syntax of `par_detect()`. The earliest term in the
+list still wins:
 
 ```{r}
 tickets <- c(
@@ -138,8 +139,8 @@ topics <- c(
 names(topics)[par_match_term(tickets, topics, ignore_case = TRUE, fixed = FALSE)]
 ```
 
-All the regexes are searched at once, which is much faster than a search
-per term, but much slower than literal terms: list the spellings as
+All the regexes are searched at once. That is much faster than a search
+per term, but much slower than literal terms. So list the spellings as
 literal terms where you can.
 
 ## Scoring text against a lexicon
@@ -166,19 +167,19 @@ data.frame(
 
 Dictionaries such as LIWC list stems, such as `"happ*"` for `"happy"` and
 `"happiness"`. Pass the stems without the `*` and with
-`whole_word = "start"`: a term then has to start a word but may end inside
+`whole_word = "start"`. A term then has to start a word but may end inside
 one, so `"unhappy"` doesn't count:
 
 ```{r}
 par_count_term(c("Happy and full of happiness", "Unhappy"), "happ", ignore_case = TRUE, whole_word = "start")
 ```
 
-Hits are counted where they overlap, too: with `c("new york", "york")`,
+Hits are counted where they overlap, too. With `c("new york", "york")`,
 the string `"new york"` has two. A term listed twice counts twice, so pass
 `unique(terms)` if the list might repeat itself.
 
-Lexicons such as AFINN rate each word, from -5 to 5. `weights` sums the
-rating of every hit, in one pass for all words:
+Lexicons such as AFINN rate each word from -5 to 5. With `weights`,
+`par_count_term()` sums the rating of every hit, in one pass for all words:
 
 ```{r}
 lexicon <- data.frame(word = c("great", "good", "bad", "rude"), score = c(3, 2, -2, -3))
@@ -207,7 +208,7 @@ id <- c("CH123456", "DE654321", "ch123456", "FR12345")
 id[!par_detect(id, "^[A-Z]{2}[0-9]{6}$")]
 ```
 
-`pattern` can also give one pattern per string. Here, each ID is checked
+`pattern` can also have one pattern per string. Here, each ID is checked
 against the format of its own country:
 
 ```{r}
@@ -228,18 +229,18 @@ par_count(answers, "\\w+")
 ```
 
 To find which of many literal terms appear, an alternation such as
-`"aspirin|ibuprofen|paracetamol"` is fast in `par_detect()`: Rust's regex
+`"aspirin|ibuprofen|paracetamol"` is fast in `par_detect()`. Rust's regex
 engine searches all of its branches at once. For a case-insensitive search
-over many terms, use `par_match_term(ignore_case = TRUE)` instead: `(?i)`
-makes a large alternation slow.
+over many terms, use `par_match_term(ignore_case = TRUE)` instead, since
+`(?i)` makes a large alternation slow.
 
 Factor columns are matched by their levels, so a factor of a million
 elements with 50 levels costs little more than matching 50 strings.
 
 ## Extracting and rewriting parts of strings
 
-`par_extract()` pulls the first match out of each string, or `NA` where
-there is none. Rust's regex has no lookaround, so to take part of a match,
+`par_extract()` returns the first match in each string, or `NA` where
+there is none. Rust's regex has no lookaround. To take part of a match,
 give it a capture group and say which one:
 
 ```{r}
@@ -257,9 +258,9 @@ par_replace_all(people, "^(\\w+), (\\w+)$", "$2 $1")
 par_replace_all(c("phone: 044 123 45 67", NA), "[^0-9]", "")
 ```
 
-`par_replace()` replaces only the first match, as `sub()` does, and
-`par_extract_all()` gives every match, as a list with one character vector
-per string:
+`par_replace()` replaces only the first match, as `sub()` does.
+`par_extract_all()` returns every match, as a list with one character
+vector per string:
 
 ```{r}
 par_replace(c("  padded  ", "x"), "^ +", "")
@@ -269,8 +270,8 @@ par_extract_all(c("#rstats and #rust", "no tags", NA), "#(\\w+)", group = 1)
 Only R's own thread can make R strings, so these run fastest where few
 strings change, such as redacting the few that hold an email address.
 
-`par_locate()` says where the first match is, as a matrix of the first and
-last character, for `substr()` or for highlighting:
+`par_locate()` finds where the first match is, as a matrix of the first
+and last character. Use it for `substr()` or for highlighting:
 
 ```{r}
 par_locate(notes, "HR [0-9]+")
@@ -278,10 +279,10 @@ par_locate(notes, "HR [0-9]+")
 
 ## Rewriting text with a dictionary
 
-To replace many literal terms at once, such as spelling variants,
-abbreviations, or names to redact, `par_replace_term()` finds them all in
-one pass. A loop of `gsub(fixed = TRUE)` would search every string once per
-term, and could replace text that an earlier replacement put there:
+`par_replace_term()` replaces many literal terms at once, such as spelling
+variants, abbreviations, or names to redact. It finds them all in one pass.
+A loop of `gsub(fixed = TRUE)` would search every string once per term. It
+could also replace text that an earlier replacement put there:
 
 ```{r}
 spelling <- data.frame(
@@ -297,8 +298,9 @@ par_replace_term(
 )
 ```
 
-Hits don't overlap: the leftmost wins, and among terms that start at the same
-place, the one listed first, so list longer terms before their prefixes.
+Hits don't overlap. The leftmost wins. Among terms that start at the same
+place, the one listed first wins, so list longer terms before their
+prefixes.
 With `ignore_case = TRUE`, the replacement goes in as it is, whatever the
 case of the hit.
 
@@ -347,8 +349,8 @@ orders
 `par_match_rows()` takes the first match, which suits a lookup table with
 one row per key. When a key can repeat on both sides, `par_match_rows_all()`
 returns every matching pair, as a many-to-many join. Joined with itself, a
-table gives its groups of equal rows, such as numeric columns in published
-data that are copies of each other:
+table returns its groups of equal rows. These may be numeric columns in
+published data that are copies of each other:
 
 ```{r}
 keys <- data.frame(diff1 = c(0.1, 0.3, 0.1), diff2 = c(0.2, 0.2, 0.2))
@@ -358,8 +360,8 @@ pairs[pairs$x < pairs$table, ] # each pair of equal rows once
 
 ## Finding duplicates
 
-`par_duplicated()` returns what `duplicated()` returns, so it finds repeated
-keys and removes repeated rows. `par_unique()` returns what `unique()`
+`par_duplicated()` returns what `duplicated()` returns. Use it to find
+repeated keys and remove repeated rows. `par_unique()` returns what `unique()`
 returns:
 
 ```{r}
@@ -390,14 +392,14 @@ data.frame(age, group = groups[par_find_interval(age, breaks)])
 ```
 
 It also finds which of a set of sorted, non-overlapping ranges each value
-falls into, such as timestamps into shifts or prices into tax brackets:
-give the range starts as `vec`. With unsorted values, base searches each one
-from scratch, and the threads help most: 10 million values take tens of
+falls into, such as timestamps into shifts or prices into tax brackets.
+Give the range starts as `vec`. With unsorted values, base searches each
+one from scratch, so the threads help most. 10 million values take tens of
 milliseconds, where base takes about a second.
 
 ## Parsing dates and times
 
-Reading dates from text is one of the slowest common steps in base R: a
+Reading dates from text is one of the slowest common steps in base R. A
 million dates take `as.Date()` seconds. `par_as_date()` and
 `par_as_posixct()` return what `as.Date()` and `as.POSIXct()` return, in
 milliseconds:
@@ -408,14 +410,14 @@ par_as_date("05.01.2026", format = "%d.%m.%Y")
 par_as_posixct("2026-01-05 08:30:00.25", tz = "UTC")
 ```
 
-Times are parsed in Rust only in UTC (`tz = "UTC"` or `"GMT"`). For a local
-time zone, base R does the work, as other formats than those with `%Y`,
-`%m`, `%d`, `%H`, `%M`, and `%S` go to base R.
+Times are parsed in Rust in any time zone. Outside UTC, base R's own code
+places each local time, which takes longer. Uncommon formats go to base R.
+`?par_as_date` lists the formats that Rust reads.
 
 ## Ranks, group sums, and interpolation
 
-`par_rank()` returns what `rank()` returns, which is slow in base R where
-values tie. `par_rowsum()` sums values by group, as `rowsum()` does, and
+`par_rank()` returns what `rank()` returns. Base `rank()` is slow where
+values tie. `par_rowsum()` sums values by group, as `rowsum()` does.
 `par_approx()` interpolates as `approx()` does:
 
 ```{r}

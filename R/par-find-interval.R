@@ -1,32 +1,32 @@
 #' Bin values by sorted breaks, in parallel
 #'
-#' @description For each value, the number of the interval it falls into:
-#'   how many of the sorted breaks in `vec` are at or below it. Use it to put
-#'   ages into age groups, timestamps into shifts, or prices into tax
-#'   brackets, and to index a vector of labels with the result. It is
-#'   `cut(x, vec, right = FALSE, labels = FALSE)`, except that values below
-#'   the first break give `0` and values at or above the last give
-#'   `length(vec)`, where [cut()] gives `NA`.
+#' @description Returns the same as base [findInterval()], but much faster for
+#'   large, unsorted `x`. For each value, it finds the number of the interval
+#'   it falls into: how many of the sorted breaks in `vec` are at or below it.
 #'
-#'   It gives the same results as base [findInterval()], so it is also a
-#'   drop-in replacement for that, much faster for large, unsorted `x`: each
-#'   element is found by a binary search in `vec`, on several threads.
+#'   Use it to put ages into age groups, timestamps into shifts, or prices
+#'   into tax brackets. The result can index a vector of labels.
 #'
-#' @details Integer and double `x` and `vec` (including Dates and POSIXct)
-#'   are handled in Rust when `x` has at least 1e4 elements. Anything else,
-#'   including a `vec` that is unsorted or contains `NA`, goes to base
-#'   [findInterval()], which also gives its errors. Base is already fast for
-#'   sorted `x`, where it doesn't need to search from scratch. `checkSorted`
-#'   and `checkNA` are passed to base, from R 4.5.0, which added them; Rust
-#'   always checks.
+#' @details This is `cut(x, vec, right = FALSE, labels = FALSE)`, except at
+#'   the ends. Values below the first break return `0`, and values at or above
+#'   the last return `length(vec)`. [cut()] returns `NA` for both.
+#'
+#'   Computed in Rust for integer and double `x` and `vec` (including Dates and
+#'   POSIXct) when `x` has at least 1e4 elements. Each element gets a binary
+#'   search in `vec`, on several threads. Anything else goes to base
+#'   [findInterval()], which also raises its errors. This includes a `vec` that
+#'   is unsorted or contains `NA`. Base is already fast for sorted `x`, where
+#'   it doesn't need to search from scratch.
+#'
+#'   `checkSorted` and `checkNA` are passed to base from R 4.5.0, which added
+#'   them. Rust always checks.
 #'
 #' @inheritParams base::findInterval
 #' @inheritParams par_match
 #'
-#' @returns An integer vector as long as `x`, as in [findInterval()]: for
-#'   each element, the number of `vec` at most that element, adjusted by
-#'   `rightmost.closed`, `all.inside`, and `left.open`. `NA` where `x` is
-#'   `NA`.
+#' @returns An integer vector as long as `x`, as in [findInterval()]: for each
+#'   element, the number of breaks in `vec` at or below it, adjusted by
+#'   `rightmost.closed`, `all.inside`, and `left.open`. `NA` where `x` is `NA`.
 #'
 #' @export
 #'

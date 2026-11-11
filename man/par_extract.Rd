@@ -66,7 +66,7 @@ one string, or one per string of \code{x}, as in
 
 \item{group}{The capture group to extract: 0 for the whole match, 1 for
 the first group, and so on. \code{par_extract()} also takes several, such as
-\code{0:3}, and gives a matrix with a column per group, from one search.}
+\code{0:3}. It then returns a matrix with a column per group, from one search.}
 
 \item{fixed}{If \code{TRUE}, \code{pattern} is found as it is, as in
 \code{grepl(fixed = TRUE)}: no character has a special meaning.}
@@ -83,51 +83,56 @@ named one, and \verb{$$} for a \code{$}. Write \verb{$\{1\}a}, not \verb{$1a}, w
 group named \verb{1a}. R's \verb{\\\\1} is not a group here.}
 }
 \value{
-A string vector as long as \code{x}, \code{NA} where \code{x} or \code{pattern}
-is \code{NA}, and for \code{par_extract()}, also where nothing matches, or the
-group took no part in the match. All keep the names of \code{x}, as
-\code{\link[=regmatches]{regmatches()}}, \code{\link[=sub]{sub()}}, and \code{\link[=gsub]{gsub()}} do. With several groups,
-\code{par_extract()} returns a string matrix with a row per string, named
-as \code{x} is, and a column per group, as
-\code{\link[stringi:stri_match]{stringi::stri_match_first_regex()}} does.
-
-\code{par_extract_all()} returns a list as long as \code{x} instead: for each
-string, a string vector of its matches, \code{character(0)} if none, or
-\code{NA} where \code{x} or \code{pattern} is \code{NA}. It finds the matches \code{\link[=par_count]{par_count()}}
-counts, so the lengths are the counts, and for a group, \code{NA} where it
-took no part in a match.
-
-\code{par_locate()} returns an integer matrix with a row per string and
-columns \code{start} and \code{end}, positions of characters, as in
-\code{\link[stringi:stri_locate]{stringi::stri_locate_first_regex()}}: an empty match has \code{end} one less
+\itemize{
+\item \code{par_extract()}, \code{par_replace()}, and \code{par_replace_all()}: a string
+vector as long as \code{x}, with the names of \code{x}, as \code{\link[=regmatches]{regmatches()}}, \code{\link[=sub]{sub()}},
+and \code{\link[=gsub]{gsub()}} keep them. \code{NA} where \code{x} or \code{pattern} is \code{NA}. For
+\code{par_extract()}, also \code{NA} where nothing matches or the group took no
+part in the match. With several groups, \code{par_extract()} returns a string
+matrix instead, with a row per string (named as \code{x} is) and a column per
+group, as \code{\link[stringi:stri_match]{stringi::stri_match_first_regex()}} does.
+\item \code{par_extract_all()}: a list as long as \code{x}. Each element is a string
+vector of the matches, \code{character(0)} if none, or \code{NA} where \code{x} or
+\code{pattern} is \code{NA}. It finds the matches that \code{\link[=par_count]{par_count()}} counts. For a
+group, it has \code{NA} where the group took no part in a match.
+\item \code{par_locate()}: an integer matrix with a row per string and columns
+\code{start} and \code{end}, positions of characters, as in
+\code{\link[stringi:stri_locate]{stringi::stri_locate_first_regex()}}. An empty match has \code{end} one less
 than \code{start}. \code{NA} where there is no match, or the group took no part in
 it.
-
-\code{par_locate_all()} returns a list as long as \code{x} instead: for each
-string, such a matrix with a row per match, no rows if none, or one row
-of \code{NA} where \code{x} or \code{pattern} is \code{NA}.
+\item \code{par_locate_all()}: a list as long as \code{x}. Each element is such a
+matrix with a row per match, no rows if none, or one row of \code{NA} where
+\code{x} or \code{pattern} is \code{NA}.
+}
 }
 \description{
-\code{par_extract()} gives the first match of \code{pattern} in each
-string, like \code{regmatches(x, regexpr(pattern, x))} but with \code{NA} where
-nothing matches, or a capture group of it, which takes the place of
-lookaround, or several groups at once, as a matrix. \code{par_extract_all()}
-gives every match, like \code{regmatches(x, gregexpr(pattern, x))}.
-\code{par_locate()} gives where the first match is instead, like
-\code{regexpr(pattern, x)}, and \code{par_locate_all()} where every match is,
-like \code{gregexpr(pattern, x)}.
-
-\code{par_replace()} replaces the first match, like
-\code{sub(pattern, replacement, x)}, and \code{par_replace_all()} every match, like
+\itemize{
+\item \code{par_extract()} returns the first match in each string, like
+\code{regmatches(x, regexpr(pattern, x))}, but with \code{NA} where nothing
+matches.
+\item \code{par_extract_all()} returns every match, like
+\code{regmatches(x, gregexpr(pattern, x))}.
+\item \code{par_locate()} finds where the first match is, like
+\code{regexpr(pattern, x)}.
+\item \code{par_locate_all()} finds where every match is, like
+\code{gregexpr(pattern, x)}.
+\item \code{par_replace()} replaces the first match, like
+\code{sub(pattern, replacement, x)}.
+\item \code{par_replace_all()} replaces every match, like
 \code{gsub(pattern, replacement, x)}.
+}
 
 All use the syntax of Rust's regex crate, as \code{\link[=par_detect]{par_detect()}} does.
 }
 \details{
-The threads find the matches and build the replaced strings, but
-only R's thread may turn them into R strings, so that part runs
-serially. Strings that \code{par_replace()} and \code{par_replace_all()} leave
-unchanged are not copied.
+\code{par_extract()} can return a capture group instead of the whole
+match, which takes the place of lookaround. It can also return several
+groups at once, as a matrix.
+
+The threads find the matches and build the replaced strings. Only R's
+thread may turn them into R strings, so that part runs serially. Strings
+that \code{par_replace()} and \code{par_replace_all()} leave unchanged are not
+copied.
 }
 \examples{
 x <- c("born 1999 in Oslo", "no year", NA)

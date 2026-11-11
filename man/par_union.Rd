@@ -13,7 +13,7 @@ par_intersect(x, y, nthreads = getOption("parvenu.threads", 0L))
 par_setdiff(x, y, nthreads = getOption("parvenu.threads", 0L))
 }
 \arguments{
-\item{x, y}{Vectors, as in \code{\link[base:sets]{base::union()}}.}
+\item{x, y}{Vectors, as in \code{\link[bit64:sets]{bit64::union()}}.}
 
 \item{nthreads}{A whole number: the max number of threads to use. \code{0} means
 the \code{RAYON_NUM_THREADS} environment variable, or else all cores. The
@@ -22,14 +22,17 @@ too small to keep that many threads busy get fewer, and more threads than
 cores count as all cores.}
 }
 \value{
-A vector without duplicates, as the base functions return it:
-the elements of \code{x} and \code{y}, of both, or of \code{x} only.
+A vector without duplicates, as the base functions return it: the
+elements of \code{x} or \code{y}, of both, or of \code{x} only.
 }
 \description{
-Same results as \code{\link[base:sets]{base::union()}}, \code{\link[base:sets]{base::intersect()}}, and
-\code{\link[base:sets]{base::setdiff()}}, but much faster for large inputs: the distinct elements
-come from \code{\link[=par_unique]{par_unique()}} and the lookups from \code{\link[=par_match]{par_match()}}, so each
-takes about a tenth of base's time at 1e7 elements.
+Return the same as base \code{\link[bit64:sets]{bit64::union()}}, \code{\link[bit64:sets]{bit64::intersect()}}, and
+\code{\link[bit64:sets]{bit64::setdiff()}}, but much faster for large inputs.
+}
+\details{
+The distinct elements come from \code{\link[=par_unique]{par_unique()}} and the lookups
+from \code{\link[=par_match]{par_match()}}. At 1e7 elements, each takes about a tenth of base's
+time.
 }
 \examples{
 par_union(c(3, 1, 3), c(2, 1))

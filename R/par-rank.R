@@ -1,17 +1,17 @@
 #' Rank values, in parallel
 #'
-#' @description Like [base::rank()], with the same results, but the values are
-#'   sorted on several threads. Base R's `rank()` is slow where values tie:
-#'   it takes seconds for a million doubles.
+#' @description Returns the same as base [rank()], but sorts the values on
+#'   several threads. Base `rank()` is slow where values tie: it takes seconds
+#'   for a million doubles.
 #'
-#' @details Integer and double vectors and factors of at least 1e4 elements
-#'   are ranked in Rust. Anything else goes to base R, as does
+#' @details Computed in Rust for integer and double vectors and factors of at
+#'   least 1e4 elements. Anything else goes to base R. So does
 #'   `ties.method = "random"`, which draws random numbers.
 #'
 #' @inheritParams base::rank
 #' @inheritParams par_match
 #'
-#' @returns As [base::rank()]: the ranks, a double vector for `"average"` and an
+#' @returns As [rank()]: the ranks, a double vector for `"average"` and an
 #'   integer one otherwise, with the names of `x`.
 #'
 #' @export

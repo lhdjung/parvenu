@@ -83,6 +83,8 @@ par_match <- function(
   out %||% match(x, table, nomatch)
 }
 
+#' @rdname par_match
+#' @export
 `%par_in%` <- function(x, table) par_match(x, table, nomatch = 0L) > 0L
 
 #' @rdname par_match

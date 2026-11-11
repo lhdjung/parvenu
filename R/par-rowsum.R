@@ -1,20 +1,20 @@
 #' Sum by group, in parallel
 #'
-#' @description Like [rowsum()], with the same results: the sum of `x` within
-#'   each group, or of each column of a matrix. Base R takes about a second
-#'   for 10 million values; this sums the groups on several threads, each
-#'   group's values in their order, as base R does, so the sums agree to the
-#'   last bit.
+#' @description Returns the same as base [rowsum()]: the sum of `x` within each
+#'   group, or of each column of a matrix. Base R takes about a second for 10
+#'   million values.
 #'
-#' @details Integer and double vectors and matrices with at least 1e4 rows
-#'   are summed in Rust. Anything else goes to base R, such as data frames.
-#'   Integer sums that overflow give `NA`, as in base R.
+#' @details Computed in Rust for integer and double vectors and matrices with
+#'   at least 1e4 rows. Anything else, such as a data frame, goes to base R.
+#'
+#'   Each group's values are summed in their order, as in base R, so the sums
+#'   agree to the last bit. Integer sums that overflow return `NA`, as in base.
 #'
 #' @inheritParams base::rowsum
 #' @inheritParams par_match
 #'
-#' @returns As [rowsum()]: a matrix with a row per group, named by the
-#'   groups, sorted unless `reorder = FALSE`, and a column per column of `x`.
+#' @returns As [rowsum()]: a matrix with a row per group, named by the groups
+#'   and sorted unless `reorder = FALSE`. It has a column per column of `x`.
 #'
 #' @export
 #'

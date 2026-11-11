@@ -51,20 +51,19 @@ par_match_term_all(
 allowed.}
 
 \item{ignore_case}{If \code{TRUE}, letters match regardless of case, in any
-script: \code{"é"} matches \code{"É"}. ASCII letters cost nothing extra; strings
+script: \code{"é"} matches \code{"É"}. ASCII letters cost nothing extra. Strings
 with other characters are lowercased first. With \code{fixed = FALSE}, this
 is \code{(?i)}.}
 
 \item{whole_word}{If \code{TRUE}, a term counts only where it isn't part of a
-longer word: the characters right before and after it must not be
-word characters, those \verb{\\w} matches: letters, digits, and marks (such
-as an accent written as a character of its own) in any script, and
-\verb{_}. \code{"york"} then matches \code{"new york"} and \code{"york, uk"}, but not
-\code{"yorkshire"}. An apostrophe
-between two such characters joins them into one word, so \code{"won"}
-doesn't match \code{"won't"}, nor \code{"heaven"} \code{"heaven's"}; this holds for
-\verb{'} and the curly \verb{\\u2019}. With \code{fixed = FALSE}, the same goes for a
-term's match.
+longer word. \code{"york"} then matches \code{"new york"} and \code{"york, uk"}, but not
+\code{"yorkshire"}. The characters right before and after the term must not
+be word characters, those \verb{\\\\w} matches. These are letters, digits, and
+marks (such as an accent written as a character of its own) in any
+script, and \verb{_}. An apostrophe (\verb{'} or the curly \verb{\\u2019}) between two
+word characters joins them into one word. So \code{"won"} doesn't match
+\code{"won't"}, nor \code{"heaven"} \code{"heaven's"}. With \code{fixed = FALSE}, the same
+goes for a term's match.
 
 If \code{"start"}, a term must start a word but may end inside one, as a
 prefix: \code{"happ"} matches \code{"happy"} and \code{"happiness"}, but not
@@ -80,67 +79,65 @@ too small to keep that many threads busy get fewer, and more threads than
 cores count as all cores.}
 
 \item{weights}{For \code{par_count_term()}: \code{NULL} to count hits, or a numeric
-vector as long as \code{terms}, without \code{NA}, to sum the weight of each term
-at each of its hits.}
+vector as long as \code{terms}, without \code{NA}. Each hit then adds the weight of
+its term, as for a lexicon that rates words from -5 to 5.}
 }
 \value{
-An integer vector as long as \code{x}, \code{NA} where \code{x} is \code{NA}:
 \itemize{
-\item \code{par_match_term()}: the position in \code{terms} of the first term found in
-each string, or \code{NA} if none is found. Use
-\code{terms[par_match_term(x, terms)]} to get the terms themselves.
-\item \code{par_count_term()}: the number of hits in each string. Every
-occurrence of every term counts, also where they overlap: \code{"new york"}
-has two hits for \code{c("new york", "york")}, and a term listed twice counts
-twice. For regexes, each term's matches are counted as \code{\link[=par_count]{par_count()}}
-counts them, which don't overlap. With \code{weights}, a double vector: the
-sum of the weights of the hits, \code{0} if none.
+\item \code{par_match_term()}: an integer vector as long as \code{x}, with the position
+in \code{terms} of the first term found in each string. \code{NA} if none is found,
+or where \code{x} is \code{NA}. Use \code{terms[par_match_term(x, terms)]} to get the
+terms themselves.
+\item \code{par_count_term()}: an integer vector as long as \code{x}, with the number of
+hits in each string, or \code{NA} where \code{x} is \code{NA}. Every occurrence of every
+term counts, also where they overlap. So \code{"new york"} has two hits for
+\code{c("new york", "york")}, and a term listed twice counts twice. For
+regexes, each term's matches are counted as \code{\link[=par_count]{par_count()}} counts them,
+which don't overlap. With \code{weights}, it returns a double vector: the sum
+of the weights of the hits, \code{0} if none.
+\item \code{par_which_term()}: a list as long as \code{x}. Each element has the
+positions in \code{terms} of every term found in the string, in increasing
+order and each once. It is \code{integer(0)} if none, or \code{NA} where \code{x} is
+\code{NA}.
+\item \code{par_match_term_all()}: a data frame with one row per pair, sorted by
+\code{x} and then by \code{term}. Column \code{x} is a position in \code{x}, \code{term} is a
+position in \code{terms} found there, and \code{n} is the number of its hits, as
+\code{par_count_term()} counts them. Strings with no term, and \code{NA}, have no
+rows.
 }
-
-\code{par_which_term()} returns a list as long as \code{x} instead: for each
-string, the positions in \code{terms} of every term found in it, in
-increasing order and each once, \code{integer(0)} if none, or \code{NA} where \code{x}
-is \code{NA}.
-
-\code{par_match_term_all()} returns a data frame with one row per pair,
-sorted by \code{x} and then by \code{term}: \code{x}, a position in \code{x}, \code{term}, a
-position in \code{terms} found there, and \code{n}, the number of its hits, as
-\code{par_count_term()} counts them. Strings with no term, and \code{NA}, have
-no rows.
 }
 \description{
 For each string in \code{x}:
 \itemize{
 \item \code{par_match_term()} finds the index of the first term in \code{terms} it
 contains. It is like \code{match()} for substrings.
-\item \code{par_count_term()} counts every hit of every term instead, for scoring
-strings against a lexicon, such as positive and negative words. With
-\code{weights}, it sums a score per hit instead, as for a lexicon that rates
-words from -5 to 5.
-\item \code{par_which_term()} gives every term each string contains, not just the
-first, for tagging: an abstract with every drug it names.
-\item \code{par_match_term_all()} gives every pair of a string and a term it
-contains, with the number of hits: a document-term matrix in long form.
+\item \code{par_count_term()} counts every hit of every term, such as to score
+strings against a lexicon of positive and negative words. With
+\code{weights}, it sums a score per hit instead.
+\item \code{par_which_term()} finds every term the string contains, such as every
+drug an abstract names.
+\item \code{par_match_term_all()} returns every pair of a string and a term it
+contains, with the number of hits. This is a document-term matrix in long
+form.
 }
 }
 \details{
 Terms are literal, as in \code{grepl(fixed = TRUE)}, so no character
-needs escaping by default. However, with \code{fixed = FALSE}, the terms are
-regular expressions.
+needs escaping. With \code{fixed = FALSE}, they are regular expressions.
 
-Order sets priority: if a string contains several terms, the one earliest
+Order sets priority. If a string contains several terms, the one earliest
 in \code{terms} wins, wherever it occurs in the string. Put specific terms
 before general ones, such as \code{"new york"} before \code{"york"}.
 
-All terms are compiled into one Aho-Corasick automaton, which finds every
+All terms are compiled into one Aho-Corasick automaton. It finds every
 occurrence of every term in a single pass over each string, however many
-terms there are. The threads read the strings straight from R's memory, as
-data.table does. The last automaton is kept, so calls that repeat the same
-\code{terms} don't build it again.
+terms there are. The last automaton is kept, so calls that repeat the same
+\code{terms} don't build it again. The threads read the strings straight from
+R's memory, as data.table does.
 
-With \code{fixed = FALSE}, the terms are compiled into one regex set instead,
-which also says in one pass which of them match a string. That is much
-slower than the automaton, but much faster than a regex per term.
+With \code{fixed = FALSE}, the terms are compiled into one regex set instead.
+It also finds in one pass which terms match a string. That is much slower
+than the automaton, but much faster than a regex per term.
 }
 \examples{
 cities <- c("new york", "york", "paris")

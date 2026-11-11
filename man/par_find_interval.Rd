@@ -50,32 +50,32 @@ too small to keep that many threads busy get fewer, and more threads than
 cores count as all cores.}
 }
 \value{
-An integer vector as long as \code{x}, as in \code{\link[=findInterval]{findInterval()}}: for
-each element, the number of \code{vec} at most that element, adjusted by
-\code{rightmost.closed}, \code{all.inside}, and \code{left.open}. \code{NA} where \code{x} is
-\code{NA}.
+An integer vector as long as \code{x}, as in \code{\link[=findInterval]{findInterval()}}: for each
+element, the number of breaks in \code{vec} at or below it, adjusted by
+\code{rightmost.closed}, \code{all.inside}, and \code{left.open}. \code{NA} where \code{x} is \code{NA}.
 }
 \description{
-For each value, the number of the interval it falls into:
-how many of the sorted breaks in \code{vec} are at or below it. Use it to put
-ages into age groups, timestamps into shifts, or prices into tax
-brackets, and to index a vector of labels with the result. It is
-\code{cut(x, vec, right = FALSE, labels = FALSE)}, except that values below
-the first break give \code{0} and values at or above the last give
-\code{length(vec)}, where \code{\link[=cut]{cut()}} gives \code{NA}.
+Returns the same as base \code{\link[=findInterval]{findInterval()}}, but much faster for
+large, unsorted \code{x}. For each value, it finds the number of the interval
+it falls into: how many of the sorted breaks in \code{vec} are at or below it.
 
-It gives the same results as base \code{\link[=findInterval]{findInterval()}}, so it is also a
-drop-in replacement for that, much faster for large, unsorted \code{x}: each
-element is found by a binary search in \code{vec}, on several threads.
+Use it to put ages into age groups, timestamps into shifts, or prices
+into tax brackets. The result can index a vector of labels.
 }
 \details{
-Integer and double \code{x} and \code{vec} (including Dates and POSIXct)
-are handled in Rust when \code{x} has at least 1e4 elements. Anything else,
-including a \code{vec} that is unsorted or contains \code{NA}, goes to base
-\code{\link[=findInterval]{findInterval()}}, which also gives its errors. Base is already fast for
-sorted \code{x}, where it doesn't need to search from scratch. \code{checkSorted}
-and \code{checkNA} are passed to base, from R 4.5.0, which added them; Rust
-always checks.
+This is \code{cut(x, vec, right = FALSE, labels = FALSE)}, except at
+the ends. Values below the first break return \code{0}, and values at or above
+the last return \code{length(vec)}. \code{\link[=cut]{cut()}} returns \code{NA} for both.
+
+Computed in Rust for integer and double \code{x} and \code{vec} (including Dates and
+POSIXct) when \code{x} has at least 1e4 elements. Each element gets a binary
+search in \code{vec}, on several threads. Anything else goes to base
+\code{\link[=findInterval]{findInterval()}}, which also raises its errors. This includes a \code{vec} that
+is unsorted or contains \code{NA}. Base is already fast for sorted \code{x}, where
+it doesn't need to search from scratch.
+
+\code{checkSorted} and \code{checkNA} are passed to base from R 4.5.0, which added
+them. Rust always checks.
 }
 \examples{
 age <- c(4, 17, 18, 45, 67, NA)

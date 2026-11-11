@@ -10,8 +10,8 @@ par_match_all(x, table, nthreads = getOption("parvenu.threads", 0L))
 par_match_rows_all(x, table, nthreads = getOption("parvenu.threads", 0L))
 }
 \arguments{
-\item{x}{Rows to look up: a data frame, or a list of vectors as long as
-each other.}
+\item{x}{Rows to look up: a data frame, or a list of vectors of equal
+length.}
 
 \item{table}{Rows to look them up in, in the same form, with as many
 columns as \code{x}.}
@@ -24,34 +24,33 @@ cores count as all cores.}
 }
 \value{
 A data frame with one row per pair, sorted by \code{x} and then by
-\code{table}: \code{x}, a position in \code{x} (or row of \code{x}), and \code{table}, a
-position in \code{table} equal to it. Elements of \code{x} with no match in
+\code{table}. Column \code{x} is a position (or row) in \code{x}, and column \code{table} is
+a position in \code{table} equal to it. Elements of \code{x} with no match in
 \code{table} have no rows.
 }
 \description{
-\code{par_match()} and \code{par_match_rows()} give the first match of
-each element or row of \code{x} in \code{table}. These give all of them, as pairs
-of positions: a many-to-many join, such as \code{\link[=merge]{merge()}} does on key columns.
+\code{par_match()} and \code{par_match_rows()} find the first match of
+each element or row of \code{x} in \code{table}. These find all of them, as pairs
+of positions. This is a many-to-many join, such as \code{\link[=merge]{merge()}} does on key
+columns.
 \itemize{
-\item \code{par_match_all()} for vectors, compared as \code{par_match()} compares them.
-\item \code{par_match_rows_all()} for rows, compared as \code{par_match_rows()}
-compares them.
+\item \code{par_match_all()} compares vectors as \code{par_match()} does.
+\item \code{par_match_rows_all()} compares rows as \code{par_match_rows()} does.
 }
-
-With \code{x} and \code{table} the same, the pairs are all groups of equal
-elements, including each element paired with itself.
 }
 \details{
-The table is hashed once, and each of its elements is numbered
-by its group, the first equal element, as it goes into the map. Each
-element of \code{x} is then looked up in it, the positions in \code{table} are
-sorted by group with a counting sort, and the pairs are written on
-several threads, so the work beyond the hashing is linear in the
-number of pairs.
+With \code{x} and \code{table} the same, the pairs are all groups of equal
+elements, including each element paired with itself.
 
 The number of pairs can be much larger than either input: 1e5 equal
-elements on each side make 1e10. It is counted before any pair is
-built, and more than 2^31 - 1 pairs are an error.
+elements on each side make 1e10. It is counted before any pair is built.
+More than 2^31 - 1 pairs are an error.
+
+The table is hashed once. As each element goes into the map, it is
+numbered by its group, the first equal element. Each element of \code{x} is
+then looked up, and the positions in \code{table} are sorted by group with a
+counting sort. The pairs are written on several threads. So the work
+beyond the hashing is linear in the number of pairs.
 }
 \examples{
 par_match_all(c("b", "a", "z"), c("a", "b", "a"))

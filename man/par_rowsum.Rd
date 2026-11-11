@@ -37,20 +37,20 @@ too small to keep that many threads busy get fewer, and more threads than
 cores count as all cores.}
 }
 \value{
-As \code{\link[=rowsum]{rowsum()}}: a matrix with a row per group, named by the
-groups, sorted unless \code{reorder = FALSE}, and a column per column of \code{x}.
+As \code{\link[=rowsum]{rowsum()}}: a matrix with a row per group, named by the groups
+and sorted unless \code{reorder = FALSE}. It has a column per column of \code{x}.
 }
 \description{
-Like \code{\link[=rowsum]{rowsum()}}, with the same results: the sum of \code{x} within
-each group, or of each column of a matrix. Base R takes about a second
-for 10 million values; this sums the groups on several threads, each
-group's values in their order, as base R does, so the sums agree to the
-last bit.
+Returns the same as base \code{\link[=rowsum]{rowsum()}}: the sum of \code{x} within each
+group, or of each column of a matrix. Base R takes about a second for 10
+million values.
 }
 \details{
-Integer and double vectors and matrices with at least 1e4 rows
-are summed in Rust. Anything else goes to base R, such as data frames.
-Integer sums that overflow give \code{NA}, as in base R.
+Computed in Rust for integer and double vectors and matrices with
+at least 1e4 rows. Anything else, such as a data frame, goes to base R.
+
+Each group's values are summed in their order, as in base R, so the sums
+agree to the last bit. Integer sums that overflow return \code{NA}, as in base.
 }
 \examples{
 par_rowsum(c(1, 2, 3, 4), c("b", "a", "b", "a"))

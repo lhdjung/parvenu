@@ -46,7 +46,7 @@ par_table(
 \item{ordered}{logical flag to determine if the levels should be regarded
     as ordered (in the order given).}
 
-\item{nmax}{Ignored: a hint for base's hash table, kept so that the
+\item{nmax}{Ignored. It is a hint for base's hash table, kept so that the
 arguments are in base's order.}
 
 \item{nthreads}{A whole number: the max number of threads to use. \code{0} means
@@ -68,24 +68,30 @@ cores count as all cores.}
     constructed.  See \sQuote{Details}.}
 }
 \value{
-\code{par_factor()}: a factor, as \code{\link[base:factor]{base::factor()}} returns it, with the
-names of \code{x}. \code{par_table()}: a \code{table}, as \code{\link[base:table]{base::table()}} returns it.
+\code{par_factor()}: a factor, as \code{\link[bit64:factor]{bit64::factor()}} returns it, with the names
+of \code{x}. \code{par_table()}: a \code{table}, as \code{\link[bit64:table]{bit64::table()}} returns it.
 }
 \description{
-\code{par_factor()} is \code{\link[base:factor]{base::factor()}} with the same results, and
-\code{par_table()} is \code{\link[base:table]{base::table()}}. Both spend most of their time finding
-the distinct values and the position of each element among them, which
-here \code{\link[=par_unique]{par_unique()}} and \code{\link[=par_match]{par_match()}} do on several threads; sorting
-the levels stays with base R.
+Same results as base, but faster for large inputs:
+\itemize{
+\item \code{par_factor()} for \code{\link[bit64:factor]{bit64::factor()}}.
+\item \code{par_table()} for \code{\link[bit64:table]{bit64::table()}}.
+}
 }
 \details{
-\code{factor()} of 1e7 strings in 1e5 levels takes about 0.8s in
-base R; this takes about 0.5s, most of it sorting the levels. For 1e7
-integers in 1e6 levels, 0.85s becomes 0.3s, most of it making the
-levels' strings. \code{table()} of 1e7 integers takes about 1s in base,
-here 0.45s; the rest is R's own counting. A double vector is
-tabulated by its printed values, as in base, which takes seconds for
-1e7 of them either way.
+Both spend most of their time finding the distinct values and the
+position of each element among them. Here, \code{\link[=par_unique]{par_unique()}} and
+\code{\link[=par_match]{par_match()}} do that on several threads. Sorting the levels stays with
+base R.
+
+\code{factor()} of 1e7 strings in 1e5 levels takes about 0.8s in base R and
+0.5s here, most of it sorting the levels. For 1e7 integers in 1e6 levels,
+0.85s becomes 0.3s, most of it making the levels' strings. \code{table()} of
+1e7 integers takes about 1s in base and 0.45s here. The rest is R's own
+counting.
+
+A double vector is tabulated by its printed values, as in base. That
+takes seconds for 1e7 of them either way.
 }
 \examples{
 par_factor(c("b", "a", "b"))

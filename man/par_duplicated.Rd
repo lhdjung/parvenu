@@ -4,7 +4,7 @@
 \alias{par_duplicated}
 \alias{par_unique}
 \alias{par_any_duplicated}
-\title{Multithreaded \code{duplicated()}}
+\title{Multithreaded \code{duplicated()} and \code{unique()}}
 \usage{
 par_duplicated(
   x,
@@ -54,27 +54,31 @@ of \code{par_duplicated()}, the last if \code{fromLast = TRUE}, or \code{0L}.
 }
 }
 \description{
-Same results as base \code{\link[=duplicated]{duplicated()}}, but much faster for
-large inputs. For a data frame, rows are compared, as in base.
-
-\code{par_unique()} is base \code{\link[=unique]{unique()}} on the same machinery, and
-\code{length(par_unique(x))} counts the distinct elements.
-\code{par_any_duplicated()} is base \code{\link[=anyDuplicated]{anyDuplicated()}}: the position of the
-first duplicate, or \code{0} if there is none. Base stops at the first, so
-it is quick where one comes early; this checks the first 65536
-elements (the last, with \code{fromLast}) that way before marking all.
+\itemize{
+\item \code{par_duplicated()} returns the same as base \code{\link[=duplicated]{duplicated()}}, but much
+faster for large inputs. For a data frame, rows are compared, as in base.
+\item \code{par_unique()} behaves like base \code{\link[=unique]{unique()}} but is much faster for large
+inputs.
+\item \code{par_any_duplicated()} behaves like base \code{\link[=anyDuplicated]{anyDuplicated()}}: it finds the
+position of the first duplicate (or \code{0} if there is none). It is much
+faster where the first duplicate comes late or not at all.
+}
 }
 \details{
-Computed in Rust when \code{x} has at least 1e4 elements (or rows)
-and is an integer, double, or string vector, a factor, a Date, or a
-POSIXct, or a data frame of such columns and logical ones. Anything else
-goes to base \code{\link[=duplicated]{duplicated()}} unchanged.
+Computed in Rust when \code{x} has at least 1e4 elements (or rows) and is
+an integer, double, or string vector, a factor, a Date, or a POSIXct, or a
+data frame of such columns and logical ones. Anything else goes to base
+\code{\link[=duplicated]{duplicated()}} unchanged.
 
-Like \code{par_match()}, this hashes \code{x} in parallel, but it marks the
-duplicates while it builds the hash table, so it never looks the
-elements up a second time, as \code{par_match(x, x) != seq_along(x)} would.
-\code{par_unique()} collects the first occurrences instead of marking the
-duplicates, so it never subsets \code{x} by the marks either.
+Like \code{par_match()}, this hashes \code{x} in parallel. It marks the duplicates
+while it builds the hash table, so it never looks the elements up a
+second time, as \code{par_match(x, x) != seq_along(x)} would. \code{par_unique()}
+collects the first occurrences instead, so it never subsets \code{x} either.
+
+Base \code{\link[=anyDuplicated]{anyDuplicated()}} stops at the first duplicate, so it is quick when
+one comes early. \code{par_any_duplicated()} checks the first 65536 elements
+(the last, with \code{fromLast}) that way. If none is there, it searches the
+whole vector.
 }
 \examples{
 x <- c(3, 1, 3, NA, 1, NA)

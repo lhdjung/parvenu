@@ -1,26 +1,28 @@
 #' Multithreaded `match()` on rows
 #'
-#' @description For each row of `x`, the position of the first row of
-#'   `table` that is equal to it in every column, as in a join on several
-#'   key columns. Columns are paired by position, not by name, and each pair
-#'   is compared as `par_match()` compares vectors: `1L` matches `1`, a
-#'   factor matches by its levels, and `NA` matches `NA`.
+#' @description Finds, for each row of `x`, the position of the first row of
+#'   `table` that is equal to it in every column. This is a join on several
+#'   key columns.
 #'
-#' @details Whole rows are hashed in parallel, so this costs about as much
-#'   as one `par_match()` call, however many columns there are. Integer,
-#'   double, character, Date, and POSIXct columns, and factors, are compared
-#'   in Rust as they are; for other pairs of columns, `par_match()` first
-#'   turns each into the positions of first occurrences in `table`.
+#' @details Columns are paired by position, not by name. Each pair is compared
+#'   as `par_match()` compares vectors: `1L` matches `1`, a factor matches by
+#'   its levels, and `NA` matches `NA`.
 #'
-#' @param x Rows to look up: a data frame, or a list of vectors as long as
-#'   each other.
+#'   Whole rows are hashed in parallel, so this costs about as much as one
+#'   `par_match()` call, however many columns there are. Integer, double,
+#'   character, Date, POSIXct, and factor columns are compared in Rust as they
+#'   are. Other columns are first turned by `par_match()` into the positions of
+#'   first occurrences in `table`.
+#'
+#' @param x Rows to look up: a data frame, or a list of vectors of equal
+#'   length.
 #' @param table Rows to look them up in, in the same form, with as many
 #'   columns as `x`.
 #' @inheritParams par_match
 #'
-#' @returns An integer vector with one element per row of `x`: the first
-#'   row of `table` equal to it, or `nomatch` if there is none.
-#'   `par_match_rows(x, table, nomatch = 0L) > 0L` tells which rows of `x`
+#' @returns An integer vector with one element per row of `x`: the first row
+#'   of `table` equal to it, or `nomatch` if there is none. Use
+#'   `par_match_rows(x, table, nomatch = 0L) > 0L` to find which rows of `x`
 #'   are in `table`.
 #'
 #' @export

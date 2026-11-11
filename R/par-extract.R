@@ -1,57 +1,60 @@
 #' Extract or replace regex matches, in parallel
 #'
-#' @description `par_extract()` gives the first match of `pattern` in each
-#'   string, like `regmatches(x, regexpr(pattern, x))` but with `NA` where
-#'   nothing matches, or a capture group of it, which takes the place of
-#'   lookaround, or several groups at once, as a matrix. `par_extract_all()`
-#'   gives every match, like `regmatches(x, gregexpr(pattern, x))`.
-#'   `par_locate()` gives where the first match is instead, like
-#'   `regexpr(pattern, x)`, and `par_locate_all()` where every match is,
-#'   like `gregexpr(pattern, x)`.
-#'
-#'   `par_replace()` replaces the first match, like
-#'   `sub(pattern, replacement, x)`, and `par_replace_all()` every match, like
+#' @description
+#'   - `par_extract()` returns the first match in each string, like
+#'   `regmatches(x, regexpr(pattern, x))`, but with `NA` where nothing
+#'   matches.
+#'   - `par_extract_all()` returns every match, like
+#'   `regmatches(x, gregexpr(pattern, x))`.
+#'   - `par_locate()` finds where the first match is, like
+#'   `regexpr(pattern, x)`.
+#'   - `par_locate_all()` finds where every match is, like
+#'   `gregexpr(pattern, x)`.
+#'   - `par_replace()` replaces the first match, like
+#'   `sub(pattern, replacement, x)`.
+#'   - `par_replace_all()` replaces every match, like
 #'   `gsub(pattern, replacement, x)`.
 #'
 #'   All use the syntax of Rust's regex crate, as [par_detect()] does.
 #'
-#' @details The threads find the matches and build the replaced strings, but
-#'   only R's thread may turn them into R strings, so that part runs
-#'   serially. Strings that `par_replace()` and `par_replace_all()` leave
-#'   unchanged are not copied.
+#' @details `par_extract()` can return a capture group instead of the whole
+#'   match, which takes the place of lookaround. It can also return several
+#'   groups at once, as a matrix.
+#'
+#'   The threads find the matches and build the replaced strings. Only R's
+#'   thread may turn them into R strings, so that part runs serially. Strings
+#'   that `par_replace()` and `par_replace_all()` leave unchanged are not
+#'   copied.
 #'
 #' @param group The capture group to extract: 0 for the whole match, 1 for
 #'   the first group, and so on. `par_extract()` also takes several, such as
-#'   `0:3`, and gives a matrix with a column per group, from one search.
+#'   `0:3`. It then returns a matrix with a column per group, from one search.
 #' @param replacement The string to put in place of each match. Unless
 #'   `fixed = TRUE`, `$1` stands for the first capture group, `${name}` for a
 #'   named one, and `$$` for a `$`. Write `${1}a`, not `$1a`, which means a
 #'   group named `1a`. R's `\\1` is not a group here.
 #' @inheritParams par_detect
 #'
-#' @returns A string vector as long as `x`, `NA` where `x` or `pattern`
-#'   is `NA`, and for `par_extract()`, also where nothing matches, or the
-#'   group took no part in the match. All keep the names of `x`, as
-#'   [regmatches()], [sub()], and [gsub()] do. With several groups,
-#'   `par_extract()` returns a string matrix with a row per string, named
-#'   as `x` is, and a column per group, as
-#'   [stringi::stri_match_first_regex()] does.
-#'
-#'   `par_extract_all()` returns a list as long as `x` instead: for each
-#'   string, a string vector of its matches, `character(0)` if none, or
-#'   `NA` where `x` or `pattern` is `NA`. It finds the matches [par_count()]
-#'   counts, so the lengths are the counts, and for a group, `NA` where it
-#'   took no part in a match.
-#'
-#'   `par_locate()` returns an integer matrix with a row per string and
-#'   columns `start` and `end`, positions of characters, as in
-#'   [stringi::stri_locate_first_regex()]: an empty match has `end` one less
+#' @returns
+#'   - `par_extract()`, `par_replace()`, and `par_replace_all()`: a string
+#'   vector as long as `x`, with the names of `x`, as [regmatches()], [sub()],
+#'   and [gsub()] keep them. `NA` where `x` or `pattern` is `NA`. For
+#'   `par_extract()`, also `NA` where nothing matches or the group took no
+#'   part in the match. With several groups, `par_extract()` returns a string
+#'   matrix instead, with a row per string (named as `x` is) and a column per
+#'   group, as [stringi::stri_match_first_regex()] does.
+#'   - `par_extract_all()`: a list as long as `x`. Each element is a string
+#'   vector of the matches, `character(0)` if none, or `NA` where `x` or
+#'   `pattern` is `NA`. It finds the matches that [par_count()] counts. For a
+#'   group, it has `NA` where the group took no part in a match.
+#'   - `par_locate()`: an integer matrix with a row per string and columns
+#'   `start` and `end`, positions of characters, as in
+#'   [stringi::stri_locate_first_regex()]. An empty match has `end` one less
 #'   than `start`. `NA` where there is no match, or the group took no part in
 #'   it.
-#'
-#'   `par_locate_all()` returns a list as long as `x` instead: for each
-#'   string, such a matrix with a row per match, no rows if none, or one row
-#'   of `NA` where `x` or `pattern` is `NA`.
+#'   - `par_locate_all()`: a list as long as `x`. Each element is such a
+#'   matrix with a row per match, no rows if none, or one row of `NA` where
+#'   `x` or `pattern` is `NA`.
 #'
 #' @export
 #'

@@ -57,35 +57,45 @@ doesn't parse. \code{par_as_posixct()} returns a POSIXct vector instead, as
 \code{\link[=as.POSIXct]{as.POSIXct()}} does.
 }
 \description{
-\code{par_as_date()} is \code{\link[=as.Date]{as.Date()}} for strings, and
-\code{par_as_posixct()} is \code{\link[=as.POSIXct]{as.POSIXct()}} for strings, with the same
-results. Base R parses about a million dates in seconds, on one thread;
-these read the strings on several, and give the same results.
+Same results as base for strings, but much faster for large
+inputs:
+\itemize{
+\item \code{par_as_date()} for \code{\link[=as.Date]{as.Date()}}.
+\item \code{par_as_posixct()} for \code{\link[=as.POSIXct]{as.POSIXct()}}.
+}
+
+Base R takes seconds to parse a million dates, on one thread.
 }
 \details{
-Formats may use \verb{\%Y}, \verb{\%y}, \verb{\%m}, \verb{\%b} (also \verb{\%B} and \verb{\%h}:
-English month names, full or their first three letters, in any case,
-where the \code{LC_TIME} locale is C or English), \verb{\%d}, \verb{\%e}, \verb{\%j}, \verb{\%H},
+Formats may use \verb{\%Y}, \verb{\%y}, \verb{\%m}, \verb{\%b}, \verb{\%d}, \verb{\%e}, \verb{\%j}, \verb{\%H},
 \verb{\%I} with \verb{\%p}, \verb{\%M}, \verb{\%S}, \verb{\%OS}, \verb{\%z} (an offset such as \code{+0530}),
-\verb{\%F}, \verb{\%T}, and \verb{\%R}, with a year, and a month and day or a day of the
-year, as the default \code{tryFormats} do. They are read as \code{\link[=strptime]{strptime()}}
-reads them, quirks included: text after the format is ignored,
-\code{"24:00:00"} is midnight of the next day, and \code{"2020-1-5"} is a date.
+\verb{\%F}, \verb{\%T}, and \verb{\%R}. \verb{\%B} and \verb{\%h} are read as \verb{\%b}: English month
+names, full or abbreviated to three letters, in any case. This works
+where the \code{LC_TIME} locale is C or English. A format needs a year, and a
+month and day or a day of the year, as the default \code{tryFormats} have.
 
-In UTC (\code{"UTC"}, \code{"GMT"}, or \code{""} in a session whose time zone is UTC)
-the parse gives the times. In another time zone, base R's own C code
-places each local time, so a time that doesn't exist there, or occurs
-twice, comes out as in base. That code runs on only two times per
-calendar day for the days that have no change of clock, and on every
-time of the days that do.
+Strings are read as \code{\link[=strptime]{strptime()}} reads them, quirks included. Text after
+the format is ignored, \code{"24:00:00"} is midnight of the next day, and
+\code{"2020-1-5"} is a date.
 
-Everything else goes to base R: other formats, several formats in
-\code{format}, month names in other locales, inputs that aren't strings or
-factors, fewer than 1e4 strings, \code{tryFormats} with \verb{\%z} in a time zone
-other than UTC, spaces other than ASCII ones, and seconds written in
-hexadecimal, with more than 15 digits, or as \code{nan(...)}. So does an
-input that no format fits, which base R reports.
-Factors are turned into strings first.
+In UTC (\code{"UTC"}, \code{"GMT"}, or \code{""} in a session whose time zone is UTC),
+the parse returns the times directly. In other time zones, base R's own
+C code places each local time. So a time that doesn't exist there, or
+occurs twice, comes out as in base. That code runs on only two times per
+day for days without a change of clock, and on every time of days with
+one.
+
+Factors are turned into strings first. Everything else goes to base R:
+\itemize{
+\item other formats, or several formats in \code{format}
+\item month names in other locales
+\item inputs that aren't strings or factors, or fewer than 1e4 of them
+\item \code{tryFormats} with \verb{\%z} in a time zone other than UTC
+\item spaces other than ASCII ones
+\item seconds written in hexadecimal, with more than 15 digits, or as
+\code{nan(...)}
+\item an input that no format fits, which base R reports.
+}
 }
 \examples{
 par_as_date(c("2024-02-29", "2024-02-30", NA))
