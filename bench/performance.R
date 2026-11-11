@@ -1,5 +1,5 @@
-# The timings in the article "Using parvenu well"; run after installing
-# parvenu.
+# The timings in the article "Performance: fast paths and slow paths"; run
+# after installing parvenu.
 library(parvenu)
 set.seed(1)
 b <- function(..., n = 3) {

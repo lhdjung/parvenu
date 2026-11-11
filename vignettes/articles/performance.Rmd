@@ -1,5 +1,8 @@
 ---
-title: "Using parvenu well"
+title: "Performance: fast paths and slow paths"
+description: >
+  For those who already use parvenu: habits that make calls faster, and
+  inputs that quietly take a slow path, with timings.
 ---
 
 ```{r, include = FALSE}
@@ -15,12 +18,13 @@ library(parvenu)
 
 parvenu's functions are fast without any tuning. A few habits make them
 faster still, and a few inputs quietly take a slow path. This article
-collects both.
+collects both. If you are new to parvenu, start with the
+[use case examples](use-cases.html), which show what each function is for.
 
 Every timing here comes from one script,
-[`bench/using-parvenu-well.R`](https://github.com/lhdjung/parvenu/blob/main/bench/using-parvenu-well.R),
+[`bench/performance.R`](https://github.com/lhdjung/parvenu/blob/main/bench/performance.R),
 run on 8 cores. Its output, with the R version and platform, is in
-[`bench/using-parvenu-well.out`](https://github.com/lhdjung/parvenu/blob/main/bench/using-parvenu-well.out).
+[`bench/performance.out`](https://github.com/lhdjung/parvenu/blob/main/bench/performance.out).
 The numbers are medians, rounded. Run the script to get your own.
 
 ## Keep repeated values as a factor

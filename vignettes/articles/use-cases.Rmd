@@ -1,5 +1,8 @@
 ---
 title: "Use case examples"
+description: >
+  Start here: what each function is for, shown on common tasks such as
+  coding free text, joins, duplicates, and dates.
 ---
 
 ```{r, include = FALSE}
@@ -236,8 +239,8 @@ over many terms, use `par_match_term(ignore_case = TRUE)` instead, since
 
 Factor columns are matched by their levels, so a factor of a million
 elements with 50 levels costs little more than matching 50 strings. See
-[Using parvenu well](using-parvenu-well.html) for this and other ways to
-keep calls fast.
+[Performance: fast paths and slow paths](performance.html) for this and
+other ways to keep calls fast.
 
 ## Extracting and rewriting parts of strings
 

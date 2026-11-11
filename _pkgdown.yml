@@ -38,3 +38,10 @@ reference:
     contents:
       - par_match_term
       - par_replace_term
+
+articles:
+  - title: Articles
+    navbar: ~
+    contents:
+      - articles/use-cases
+      - articles/performance

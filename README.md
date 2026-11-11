@@ -331,8 +331,8 @@ article](https://github.com/lhdjung/parvenu/blob/main/vignettes/articles/use-cas
 shows each function at work: coding free text with a keyword table,
 scoring text against a lexicon, filtering logs, validating identifiers,
 extracting and rewriting parts of strings, lookups and joins on one or
-several keys, finding duplicates, and binning. [Using parvenu
-well](https://github.com/lhdjung/parvenu/blob/main/vignettes/articles/using-parvenu-well.Rmd)
+several keys, finding duplicates, and binning. The [performance
+article](https://github.com/lhdjung/parvenu/blob/main/vignettes/articles/performance.Rmd)
 collects ways to keep calls fast, such as keeping repeated values as a
 factor, and the inputs that take a slow path.
 
