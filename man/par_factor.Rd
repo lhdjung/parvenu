@@ -55,8 +55,8 @@ default is the \code{parvenu.threads} option, or \code{0} if that isn't set. Inp
 too small to keep that many threads busy get fewer, and more threads than
 cores count as all cores.}
 
-\item{...}{(in \code{ordered(.)}): any of the above, apart from
-    \code{ordered} itself.}
+\item{...}{Vectors or factors of the same length, or a single list of
+them, such as a data frame, as in \code{\link[base:table]{base::table()}}.}
 
 \item{useNA}{whether to include \code{NA} values in the table.
     See \sQuote{Details}.  Can be abbreviated.}
@@ -68,15 +68,19 @@ cores count as all cores.}
     constructed.  See \sQuote{Details}.}
 }
 \value{
-\code{par_factor()}: a factor, as \code{\link[bit64:factor]{bit64::factor()}} returns it, with the names
-of \code{x}. \code{par_table()}: a \code{table}, as \code{\link[bit64:table]{bit64::table()}} returns it.
+As base: a factor from \code{par_factor()}, a \code{table} from
+\code{par_table()}.
 }
 \description{
-Same results as base, but faster for large inputs:
+Drop-in replacements for base functions, faster for large
+inputs:
 \itemize{
-\item \code{par_factor()} for \code{\link[bit64:factor]{bit64::factor()}}.
-\item \code{par_table()} for \code{\link[bit64:table]{bit64::table()}}.
+\item \code{par_factor()} for \code{\link[base:factor]{factor()}}.
+\item \code{par_table()} for \code{\link[base:table]{table()}}.
 }
+
+They take base's arguments and give identical results. The only
+differences: both take \code{nthreads}, and \code{par_factor()} ignores \code{nmax}.
 }
 \details{
 Both spend most of their time finding the distinct values and the

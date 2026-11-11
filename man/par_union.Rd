@@ -13,7 +13,7 @@ par_intersect(x, y, nthreads = getOption("parvenu.threads", 0L))
 par_setdiff(x, y, nthreads = getOption("parvenu.threads", 0L))
 }
 \arguments{
-\item{x, y}{Vectors, as in \code{\link[bit64:sets]{bit64::union()}}.}
+\item{x, y}{Vectors, as in \code{\link[base:sets]{union()}}.}
 
 \item{nthreads}{A whole number: the max number of threads to use. \code{0} means
 the \code{RAYON_NUM_THREADS} environment variable, or else all cores. The
@@ -26,8 +26,9 @@ A vector without duplicates, as the base functions return it: the
 elements of \code{x} or \code{y}, of both, or of \code{x} only.
 }
 \description{
-Return the same as base \code{\link[bit64:sets]{bit64::union()}}, \code{\link[bit64:sets]{bit64::intersect()}}, and
-\code{\link[bit64:sets]{bit64::setdiff()}}, but much faster for large inputs.
+Return the same as base \code{\link[base:sets]{union()}},
+\code{\link[base:sets]{intersect()}}, and \code{\link[base:sets]{setdiff()}}, but
+much faster for large inputs.
 }
 \details{
 The distinct elements come from \code{\link[=par_unique]{par_unique()}} and the lookups

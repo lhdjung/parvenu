@@ -1,8 +1,12 @@
 #' Make a factor, or count values, in parallel
 #'
-#' @description Same results as base, but faster for large inputs:
-#'   - `par_factor()` for [factor()].
-#'   - `par_table()` for [table()].
+#' @description Drop-in replacements for base functions, faster for large
+#'   inputs:
+#'   - `par_factor()` for [`factor()`][base::factor].
+#'   - `par_table()` for [`table()`][base::table].
+#'
+#'   They take base's arguments and give identical results. The only
+#'   differences: both take `nthreads`, and `par_factor()` ignores `nmax`.
 #'
 #' @details Both spend most of their time finding the distinct values and the
 #'   position of each element among them. Here, [par_unique()] and
@@ -21,12 +25,14 @@
 #' @param x A vector, as in [base::factor()].
 #' @param nmax Ignored. It is a hint for base's hash table, kept so that the
 #'   arguments are in base's order.
+#' @param ... Vectors or factors of the same length, or a single list of
+#'   them, such as a data frame, as in [base::table()].
 #' @inheritParams base::factor
 #' @inheritParams base::table
 #' @inheritParams par_match
 #'
-#' @returns `par_factor()`: a factor, as [factor()] returns it, with the names
-#'   of `x`. `par_table()`: a `table`, as [table()] returns it.
+#' @returns As base: a factor from `par_factor()`, a `table` from
+#'   `par_table()`.
 #'
 #' @export
 #'

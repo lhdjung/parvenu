@@ -29,13 +29,13 @@ too small to keep that many threads busy get fewer, and more threads than
 cores count as all cores.}
 }
 \value{
-As \code{\link[bit64:bit64S3]{bit64::rank()}}: the ranks, a double vector for \code{"average"} and an
-integer one otherwise, with the names of \code{x}.
+As \code{\link[base:rank]{rank()}}: the ranks, a double vector for
+\code{"average"} and an integer one otherwise, with the names of \code{x}.
 }
 \description{
-Returns the same as base \code{\link[bit64:bit64S3]{bit64::rank()}}, but sorts the values on
-several threads. Base \code{rank()} is slow where values tie: it takes seconds
-for a million doubles.
+Returns the same as base \code{\link[base:rank]{rank()}}, but sorts the
+values on several threads. Base \code{rank()} is slow where values tie: it
+takes seconds for a million doubles.
 }
 \details{
 Computed in Rust for integer and double vectors and factors of at

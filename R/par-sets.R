@@ -1,13 +1,14 @@
 #' Set operations, in parallel
 #'
-#' @description Return the same as base [union()], [intersect()], and
-#'   [setdiff()], but much faster for large inputs.
+#' @description Return the same as base [`union()`][base::union],
+#'   [`intersect()`][base::intersect], and [`setdiff()`][base::setdiff], but
+#'   much faster for large inputs.
 #'
 #' @details The distinct elements come from [par_unique()] and the lookups
 #'   from [par_match()]. At 1e7 elements, each takes about a tenth of base's
 #'   time.
 #'
-#' @param x,y Vectors, as in [union()].
+#' @param x,y Vectors, as in [`union()`][base::union].
 #' @inheritParams par_match
 #'
 #' @returns A vector without duplicates, as the base functions return it: the
