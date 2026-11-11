@@ -19,7 +19,7 @@ par_table(
   ...,
   exclude = if (useNA == "no") c(NA, NaN),
   useNA = c("no", "ifany", "always"),
-  dnn = list.names(...),
+  dnn = list_names(...),
   deparse.level = 1,
   nthreads = getOption("parvenu.threads", 0L)
 )

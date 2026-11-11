@@ -57,19 +57,19 @@ par_factor <- function(
   }
   nx <- names(x)
   # Classed and double inputs are matched as strings, as in base.
-  matchAsChar <- is.object(x) ||
+  as_chr <- is.object(x) ||
     !(is.character(x) || is.integer(x) || is.logical(x))
   if (missing(levels)) {
     # The sorted distinct values.
     y <- par_unique(x, nthreads = nthreads)
     ind <- order(y)
-    if (matchAsChar) {
+    if (as_chr) {
       y <- as.character(y)
     }
     levels <- unique(y[ind])
   }
   force(ordered)
-  if (matchAsChar) {
+  if (as_chr) {
     x <- as.character(x)
   }
   levels <- levels[is.na(match(levels, exclude))]
@@ -104,14 +104,14 @@ par_table <- function(
   ...,
   exclude = if (useNA == "no") c(NA, NaN),
   useNA = c("no", "ifany", "always"),
-  dnn = list.names(...),
+  dnn = list_names(...),
   deparse.level = 1,
   nthreads = getOption("parvenu.threads", 0L)
 ) {
   nthreads <- check_nthreads(nthreads)
   # As base's table(), with par_factor() and par_match().
   # Default names: those of the arguments, or their deparsed expressions.
-  list.names <- function(...) {
+  list_names <- function(...) {
     l <- as.list(substitute(list(...)))[-1L]
     if (length(l) == 1L && is.list(..1) && !is.null(nm <- names(..1))) {
       return(nm)
@@ -138,15 +138,15 @@ par_table <- function(
     }
   }
   # Settle `useNA` from `exclude`, as base does.
-  miss.use <- missing(useNA)
-  miss.exc <- missing(exclude)
-  useNA <- if (miss.use && !miss.exc && !match(NA, exclude, nomatch = 0L)) {
+  miss_use <- missing(useNA)
+  miss_exc <- missing(exclude)
+  useNA <- if (miss_use && !miss_exc && !match(NA, exclude, nomatch = 0L)) {
     "ifany"
   } else {
     match.arg(useNA)
   }
-  doNA <- useNA != "no"
-  if (!miss.use && !miss.exc && doNA && match(NA, exclude, nomatch = 0L)) {
+  do_na <- useNA != "no"
+  if (!miss_use && !miss_exc && do_na && match(NA, exclude, nomatch = 0L)) {
     warning(
       "'exclude' containing NA and 'useNA' != \"no\"' are a bit contradicting"
     )
@@ -174,11 +174,11 @@ par_table <- function(
     } else if (length(a) != lens) {
       stop("all arguments must have the same length")
     }
-    fact.a <- is.factor(a)
-    if (doNA) {
-      aNA <- anyNA(a)
+    is_fct <- is.factor(a)
+    if (do_na) {
+      raw_na <- anyNA(a)
     }
-    if (!fact.a) {
+    if (!is_fct) {
       # Warnings become errors here, as in base.
       a0 <- a
       op <- options(warn = 2)
@@ -188,30 +188,30 @@ par_table <- function(
     }
     # An NA level is added where there are NAs, and with "always" if there
     # isn't one yet. This is base's logic, untangled.
-    add.na <- FALSE
-    if (doNA) {
+    add_na <- FALSE
+    if (do_na) {
       ifany <- useNA == "ifany"
-      anNAc <- anyNA(a)
+      fct_na <- anyNA(a)
       ll <- levels(a)
-      add.ll <- !anyNA(ll)
-      if (add.ll) {
+      add_ll <- !anyNA(ll)
+      if (add_ll) {
         ll <- c(ll, NA)
       }
-      add.na <- anNAc || (!ifany && add.ll)
+      add_na <- fct_na || (!ifany && add_ll)
     }
-    if (add.na) {
+    if (add_na) {
       a <- par_factor(a, levels = ll, exclude = NULL, nthreads = nthreads)
     } else {
       ll <- levels(a)
     }
     a <- as.integer(a)
     # Drop the excluded levels and values.
-    if (fact.a && !miss.exc) {
+    if (is_fct && !miss_exc) {
       keep <- which(match(ll, exclude, nomatch = 0L) == 0L)
       ll <- ll[keep]
       a <- par_match(a, keep, nthreads = nthreads)
-    } else if (!fact.a && add.na) {
-      if (ifany && !aNA && add.ll) {
+    } else if (!is_fct && add_na) {
+      if (ifany && !raw_na && add_ll) {
         ll <- ll[!is.na(ll)]
         is.na(a) <- par_match(a0, c(exclude, NA), 0L, nthreads = nthreads) > 0L
       } else {
