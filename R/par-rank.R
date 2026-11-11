@@ -28,7 +28,8 @@ par_rank <- function(
 ) {
   nthreads <- check_nthreads(nthreads)
   ties.method <- match.arg(ties.method)
-  # Factors rank by their codes.
+
+  # Base for what Rust doesn't cover. Factors rank by their codes.
   plain <- is.factor(x) || (!is.object(x) && is_num(x))
   if (
     !plain ||
@@ -40,16 +41,19 @@ par_rank <- function(
   ) {
     return(rank(x, na.last = na.last, ties.method = ties.method))
   }
+
   nm <- names(x)
   if (is.factor(x)) {
     x <- as.integer(x)
   }
+
   if (is.na(na.last)) {
     # `na.last = NA` drops NAs first.
     keep <- !is.na(x)
     x <- x[keep]
     nm <- nm[keep]
   }
+
   # 0 keeps NA, 1 ranks it last, 2 first.
   code <- if (is.na(na.last) || identical(na.last, "keep")) {
     0L
@@ -58,7 +62,9 @@ par_rank <- function(
   } else {
     2L
   }
+
   out <- par_rank_rs(x, ties.method, code, nthreads)
   names(out) <- nm
+
   out
 }

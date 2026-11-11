@@ -63,6 +63,7 @@ par_as_date <- function(
   nthreads = getOption("parvenu.threads", 0L)
 ) {
   nthreads <- check_nthreads(nthreads)
+
   out <- parse_time(x, format, tryFormats, TRUE, nthreads)
 
   # Base takes over, with `format` still missing if it was.
@@ -104,6 +105,7 @@ par_as_posixct <- function(
   nthreads = getOption("parvenu.threads", 0L)
 ) {
   nthreads <- check_nthreads(nthreads)
+
   out <- posixct_secs(x, tz, format, tryFormats, nthreads)
 
   # Base takes over, with `format` still missing if it was.
@@ -130,15 +132,19 @@ posixct_secs <- function(x, tz, format, tryFormats, nthreads) {
     return(parse_time(x, format, tryFormats, FALSE, nthreads))
   }
 
+  # Other zones: one zone and one format, or base.
   formats <- if (missing(format)) tryFormats else format
   # strptime() recycles several formats along `x`.
   one_format <- missing(format) || length(format) == 1L
   if (!is_string(tz) || !is.character(formats) || !one_format) {
     return(NULL)
   }
+
+  # Without an offset in the strings, they are local times in `tz`.
   if (!any(grepl("%z", formats, fixed = TRUE))) {
     return(local_time(x, formats, missing(format), tz, nthreads))
   }
+
   # The offset fixes the instant, so the zone only labels it.
   if (!missing(format)) parse_time(x, format, tryFormats, FALSE, nthreads)
 }
@@ -191,11 +197,13 @@ parse_time <- function(x, format, tryFormats, date, nthreads, split = FALSE) {
   if (is.null(out) || !any(grepl("%[jz]", formats))) {
     return(out)
   }
+
   # Only strings that fail can warn, so base reads those again.
   failed <- is.na(if (split) out$whole else out) & !is.na(x)
   if (any(failed)) {
     strptime(x[failed], formats, tz = "UTC")
   }
+
   out
 }
 
@@ -208,13 +216,17 @@ parse_time <- function(x, format, tryFormats, date, nthreads, split = FALSE) {
 # these, which are kept separately, so could differ.
 english_time <- function(formats) {
   read <- function(s, f) strptime(s, f, tz = "UTC")
+
   months_ok <- function() {
     mon <- c(month.abb, month.name) |> paste(1) |> read("%b %d")
     identical(mon$mon, rep(0:11, 2L))
   }
+
   ampm_ok <- function() {
     identical(read(c("1 AM", "1 PM"), "%I %p")$hour, c(1L, 13L))
   }
+
+  # Only what `formats` use needs checking.
   (!any(grepl("%[bBh]", formats)) || months_ok()) &&
     (!any(grepl("%p", formats, fixed = TRUE)) || ampm_ok())
 }
@@ -229,14 +241,17 @@ local_time <- function(x, formats, try_formats, tz, nthreads) {
     if (is.null(secs)) {
       return(NULL)
     }
+
     out <- local_secs(secs$whole, secs$frac, tz, nthreads)
     if (is.null(out)) {
       return(NULL)
     }
+
     if (!try_formats || !anyNA(out[!is.na(x)])) {
       return(out)
     }
   }
+
   NULL
 }
 
@@ -261,12 +276,14 @@ local_secs <- function(secs, frac, tz, nthreads) {
   probe <- c(used - 1, used, used + 1) |>
     par_unique(nthreads = nthreads) |>
     sort()
+
   # Base reads and places a time in about the time two placements of day
   # ends take here, and ties at about 1.5 days probed per time (Europe/Berlin,
   # 1e4-5e4 times); beyond one day per time, base takes over.
   if (length(probe) > length(secs)) {
     return(NULL)
   }
+
   ends <- c(probe * 86400, probe * 86400 + 86399)
   offset <- place_in_zone(ends, tz) - ends
   start <- offset[seq_along(probe)]
@@ -285,8 +302,10 @@ local_secs <- function(secs, frac, tz, nthreads) {
   out <- secs + start[i][k]
   hard <- which(!plain[k])
   out[hard] <- place_by_base(secs[hard], tz)
+
   # Infinite seconds, from R 4.6.0.
   out[is.nan(secs)] <- NaN
+
   out + frac
 }
 
@@ -295,10 +314,12 @@ place_in_zone <- function(s, tz) {
   if (!length(s)) {
     return(s)
   }
+
   lt <- .POSIXct(s, "UTC") |> as.POSIXlt()
   attr(lt, "tzone") <- tz
   lt$isdst <- -1L # let mktime() decide
   lt$gmtoff <- NA_integer_
+
   as.POSIXct(lt, tz) |> as.double()
 }
 
@@ -307,6 +328,8 @@ place_by_base <- function(s, tz) {
   if (!length(s)) {
     return(s)
   }
+
+  # Printed as strings, and read back as base would.
   lt <- .POSIXct(s, "UTC") |> as.POSIXlt()
   sprintf(
     "%04d-%02d-%02d %02d:%02d:%02d",

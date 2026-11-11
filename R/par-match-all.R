@@ -43,9 +43,11 @@ par_match_all <- function(
   nthreads = getOption("parvenu.threads", 0L)
 ) {
   nthreads <- check_nthreads(nthreads)
+
   if (max(length(x), length(table)) > .Machine$integer.max) {
     stop("`x` and `table` can have at most 2^31 - 1 elements.")
   }
+
   # One column of rows compares as par_match() compares vectors.
   match_all(list(x), list(table), nthreads)
 }
@@ -58,10 +60,13 @@ par_match_rows_all <- function(
   nthreads = getOption("parvenu.threads", 0L)
 ) {
   nthreads <- check_nthreads(nthreads)
+
   rows <- check_rows(x, table)
   match_all(rows$x, rows$table, nthreads)
 }
 
+# Every pair of matching rows of the lists of columns `x` and `table`, as a
+# data frame.
 match_all <- function(x, table, nthreads) {
   x |>
     call_rows(

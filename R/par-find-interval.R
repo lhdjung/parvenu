@@ -49,6 +49,7 @@ par_find_interval <- function(
 ) {
   nthreads <- check_nthreads(nthreads)
 
+  # Base for what Rust doesn't cover.
   use_base <- length(x) < RUST_MIN ||
     !is_num(x) ||
     !is_num(vec) ||
@@ -62,6 +63,7 @@ par_find_interval <- function(
     !is_bool(left.open) ||
     anyNA(vec) ||
     is.unsorted(vec)
+
   if (!use_base) {
     return(par_find_interval_rs(
       as_dbl(x),
@@ -76,9 +78,11 @@ par_find_interval <- function(
   # checkSorted and checkNA arrived in R 4.5.0. A local copy keeps R CMD
   # check on older R from flagging them, and errors still name it.
   findInterval <- base::findInterval
+
   if (getRversion() < "4.5.0") {
     return(findInterval(x, vec, rightmost.closed, all.inside, left.open))
   }
+
   findInterval(
     x,
     vec,

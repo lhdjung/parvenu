@@ -34,6 +34,7 @@ par_approx <- function(
   nthreads = getOption("parvenu.threads", 0L)
 ) {
   nthreads <- check_nthreads(nthreads)
+
   # The arguments go on to base as they were given, so missing ones stay
   # missing. `xout` is evaluated once, under a name no argument can mean.
   call <- match.call()
@@ -43,6 +44,7 @@ par_approx <- function(
     env$.parvenu_xout <- xout
     call$xout <- quote(.parvenu_xout)
   }
+
   # Base for what Rust doesn't cover.
   if (
     missing(xout) ||
@@ -54,10 +56,12 @@ par_approx <- function(
     call[[1L]] <- quote(stats::approx)
     return(eval(call, env))
   }
+
   # Otherwise approxfun() prepares the points, and Rust interpolates.
   call[[1L]] <- quote(stats::approxfun)
   call$xout <- NULL
   call$n <- NULL
+
   # approxfun() sorts the points, merges ties, and keeps what approx() would
   # pass to C in the function's environment.
   fun <- environment(eval(call, env))
@@ -69,5 +73,6 @@ par_approx <- function(
     as.double(c(fun$yleft, fun$yright, fun$f)),
     nthreads
   )
+
   list(x = xout, y = yout)
 }

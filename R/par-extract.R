@@ -80,6 +80,7 @@ par_extract <- function(
     # A matrix can't be indexed by the levels; the names go, as below.
     x <- as.character(x)
   }
+
   if (length(group) > 1L) {
     # One column per group.
     out <- run_extract(par_extract_rs, x, pattern, group, fixed, nthreads, TRUE)
@@ -87,10 +88,13 @@ par_extract <- function(
     rownames(out) <- names(x)
     return(out)
   }
+
   out <- run_extract(par_extract_rs, x, pattern, group, fixed, nthreads)
+
   # As regmatches() keeps them, except on a factor, where as.character()
   # drops them.
   names(out) <- if (!is.factor(x)) names(x)
+
   out
 }
 
@@ -121,6 +125,8 @@ par_locate <- function(
     # A matrix can't be indexed by the levels, and regexpr() drops the names.
     x <- as.character(x)
   }
+
+  # A row per string, with the start and end of its match.
   out <- run_extract(par_locate_rs, x, pattern, group, fixed, nthreads)
   dim(out) <- c(length(x), 2L)
   dimnames(out) <- list(names(x), c("start", "end"))
@@ -139,6 +145,7 @@ par_locate_all <- function(
   if (is.factor(x)) {
     x <- as.character(x) # as in par_locate(); gregexpr() drops the names
   }
+
   out <- run_extract(par_locate_all_rs, x, pattern, group, fixed, nthreads)
   names(out) <- names(x)
   out
@@ -181,11 +188,14 @@ run_extract <- function(rs, x, pattern, group, fixed, nthreads, many = FALSE) {
   if (!ok) {
     stop("`group` must be a single non-negative whole number.")
   }
+
   group <- as.integer(group)
+
   # run_pattern() doesn't know `group`, so it's bound here.
   rs_group <- function(x, pattern, fixed, nthreads) {
     rs(x, pattern, group, fixed, nthreads)
   }
+
   run_pattern(rs_group, x, pattern, fixed, nthreads)
 }
 
@@ -198,13 +208,18 @@ run_replace <- function(x, pattern, replacement, fixed, all, nthreads) {
   ) {
     stop("`replacement` must be a string.")
   }
+
   replacement <- enc2utf8(replacement)
+
   # Binds `replacement` and `all` for run_pattern().
   rs <- function(x, pattern, fixed, nthreads) {
     par_replace_rs(x, pattern, replacement, fixed, all, nthreads)
   }
+
   out <- run_pattern(rs, x, pattern, fixed, nthreads)
+
   # As sub() and gsub() keep them, except on a factor.
   names(out) <- if (!is.factor(x)) names(x)
+
   out
 }

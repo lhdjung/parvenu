@@ -51,14 +51,18 @@ par_factor <- function(
   nthreads = getOption("parvenu.threads", 0L)
 ) {
   nthreads <- check_nthreads(nthreads)
+
   # As base's factor(), with par_unique() and par_match().
   if (is.null(x)) {
     x <- character()
   }
+
   nx <- names(x)
+
   # Classed and double inputs are matched as strings, as in base.
   as_chr <- is.object(x) ||
     !(is.character(x) || is.integer(x) || is.logical(x))
+
   if (missing(levels)) {
     # The sorted distinct values.
     y <- par_unique(x, nthreads = nthreads)
@@ -68,15 +72,23 @@ par_factor <- function(
     }
     levels <- unique(y[ind])
   }
+
+  # Evaluate `ordered` while `x` is still as given.
   force(ordered)
+
   if (as_chr) {
     x <- as.character(x)
   }
+
+  # Each element's code is its position among the levels.
   levels <- levels[is.na(match(levels, exclude))]
   f <- par_match(x, levels, nthreads = nthreads)
+
   if (!is.null(nx)) {
     names(f) <- nx
   }
+
+  # Name the levels: by `labels`, numbered from one label, or as themselves.
   nlab <- length(labels)
   if (missing(labels)) {
     levels(f) <- as.character(levels)
@@ -94,6 +106,7 @@ par_factor <- function(
     msg <- "invalid 'labels'; length %d should be 1 or %d"
     stop(gettextf(msg, nlab, length(levels)), domain = NA)
   }
+
   class(f) <- c(if (ordered) "ordered", "factor")
   f
 }
@@ -109,13 +122,18 @@ par_table <- function(
   nthreads = getOption("parvenu.threads", 0L)
 ) {
   nthreads <- check_nthreads(nthreads)
+
   # As base's table(), with par_factor() and par_match().
   # Default names: those of the arguments, or their deparsed expressions.
   list_names <- function(...) {
     l <- as.list(substitute(list(...)))[-1L]
+
+    # A single named list, such as a data frame, gives its own names.
     if (length(l) == 1L && is.list(..1) && !is.null(nm <- names(..1))) {
       return(nm)
     }
+
+    # Unnamed arguments are named after their expressions.
     nm <- names(l)
     fixup <- if (is.null(nm)) seq_along(l) else nm == ""
     dep <- vapply(
@@ -130,6 +148,7 @@ par_table <- function(
       },
       ""
     )
+
     if (is.null(nm)) {
       dep
     } else {
@@ -137,6 +156,7 @@ par_table <- function(
       nm
     }
   }
+
   # Settle `useNA` from `exclude`, as base does.
   miss_use <- missing(useNA)
   miss_exc <- missing(exclude)
@@ -145,12 +165,15 @@ par_table <- function(
   } else {
     match.arg(useNA)
   }
+
+  # Contradicting arguments: base warns, but goes ahead.
   do_na <- useNA != "no"
   if (!miss_use && !miss_exc && do_na && match(NA, exclude, nomatch = 0L)) {
     warning(
       "'exclude' containing NA and 'useNA' != \"no\"' are a bit contradicting"
     )
   }
+
   # A single list argument holds the factors.
   args <- list(...)
   if (length(args) == 1L && is.list(args[[1L]])) {
@@ -162,22 +185,27 @@ par_table <- function(
   if (!length(args)) {
     stop("nothing to tabulate")
   }
+
   # Each factor adds its codes to `bin`, one cell index per element.
   bin <- 0L
   lens <- NULL
   dims <- integer()
   pd <- 1L
   dn <- NULL
+
   for (a in args) {
     if (is.null(lens)) {
       lens <- length(a)
     } else if (length(a) != lens) {
       stop("all arguments must have the same length")
     }
+
+    # Whether `a` is a factor, and had NAs before par_factor() can drop them.
     is_fct <- is.factor(a)
     if (do_na) {
       raw_na <- anyNA(a)
     }
+
     if (!is_fct) {
       # Warnings become errors here, as in base.
       a0 <- a
@@ -186,6 +214,7 @@ par_table <- function(
       a <- par_factor(a, exclude = exclude, nthreads = nthreads)
       options(op)
     }
+
     # An NA level is added where there are NAs, and with "always" if there
     # isn't one yet. This is base's logic, untangled.
     add_na <- FALSE
@@ -199,41 +228,56 @@ par_table <- function(
       }
       add_na <- fct_na || (!ifany && add_ll)
     }
+
     if (add_na) {
       a <- par_factor(a, levels = ll, exclude = NULL, nthreads = nthreads)
     } else {
       ll <- levels(a)
     }
+
+    # From here on, `a` holds the codes.
     a <- as.integer(a)
+
     # Drop the excluded levels and values.
     if (is_fct && !miss_exc) {
       keep <- which(match(ll, exclude, nomatch = 0L) == 0L)
       ll <- ll[keep]
       a <- par_match(a, keep, nthreads = nthreads)
     } else if (!is_fct && add_na) {
+      # Excluded values, which par_factor() made NA, took the new NA level, so
+      # they are made NA again.
       if (ifany && !raw_na && add_ll) {
+        # Only excluded values were NA: the NA level goes again.
         ll <- ll[!is.na(ll)]
         is.na(a) <- par_match(a0, c(exclude, NA), 0L, nthreads = nthreads) > 0L
       } else {
         is.na(a) <- par_match(a0, exclude, 0L, nthreads = nthreads) > 0L
       }
     }
+
+    # This factor's levels add a dimension to the table.
     nl <- length(ll)
     dims <- c(dims, nl)
+
     if (prod(dims) > .Machine$integer.max) {
       stop("attempt to make a table with >= 2^31 elements")
     }
+
+    # This factor's codes become the next digit of the cell index.
     dn <- c(dn, list(ll))
     bin <- bin + pd * (a - 1L)
     pd <- pd * nl
   }
-  # Count the cells.
+
+  # Count the cells. An NA code in any factor drops the element.
   names(dn) <- dnn
   bin <- bin[!is.na(bin)]
   if (length(bin)) {
     bin <- bin + 1L
   }
+
   y <- array(tabulate(bin, pd), dims, dimnames = dn)
   class(y) <- "table"
+
   y
 }

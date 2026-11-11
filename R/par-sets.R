@@ -27,8 +27,11 @@ par_union <- function(x, y, nthreads = getOption("parvenu.threads", 0L)) {
   } else if (!isa(x, class(y))) {
     x <- c(y[0L], x) # take `y`'s class
   }
+
   x <- unique_unnamed(x, nthreads)
   y <- unique_unnamed(y, nthreads)
+
+  # `x`, then the elements of `y` that aren't in it.
   c(x, y[par_match(y, x, 0L, nthreads = nthreads) == 0L])
 }
 
@@ -38,12 +41,16 @@ par_intersect <- function(x, y, nthreads = getOption("parvenu.threads", 0L)) {
   if (is.null(x) || is.null(y)) {
     return(NULL)
   }
+
   if (set_ops_need_as_vector(x, y)) {
     x <- as.vector(x)
     y <- as.vector(y)
   }
+
   x <- unique_unnamed(x, nthreads)
   y <- unique_unnamed(y, nthreads)
+
+  # `y[0L]` makes the type that of `c(x, y)`, as in base.
   c(x[par_match(x, y, 0L, nthreads = nthreads) > 0L], y[0L])
 }
 
@@ -53,12 +60,15 @@ par_setdiff <- function(x, y, nthreads = getOption("parvenu.threads", 0L)) {
   if (is.null(x)) {
     return(NULL)
   }
+
   if (set_ops_need_as_vector(x, y)) {
     x <- as.vector(x)
     y <- as.vector(y)
   }
+
   x <- unique_unnamed(x, nthreads)
   y <- unique_unnamed(y, nthreads)
+
   x[par_match(x, y, 0L, nthreads = nthreads) == 0L]
 }
 

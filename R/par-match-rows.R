@@ -66,6 +66,7 @@ check_rows <- function(x, table) {
   if (max(length(x[[1L]]), length(table[[1L]])) > .Machine$integer.max) {
     stop("`x` and `table` can have at most 2^31 - 1 rows.")
   }
+
   list(x = x, table = table)
 }
 
@@ -110,6 +111,7 @@ key_pair <- function(a, b, nthreads) {
     return(pair(index_codes(a, m, nthreads), b))
   }
 
+  # Numbers compare as numbers, integer against double as doubles.
   pa <- as_plain(a)
   pb <- as_plain(b)
   if (is_num(pa) && is_num(pb) && is.integer(pa) != is.integer(pb)) {
@@ -118,6 +120,8 @@ key_pair <- function(a, b, nthreads) {
   if (is_num(pa) && is_num(pb)) {
     return(pair(pa, pb))
   }
+
+  # Strings compare by their pointers in R's cache, unless encodings differ.
   if (
     is.character(pa) &&
       is.character(pb) &&

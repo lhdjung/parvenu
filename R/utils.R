@@ -17,6 +17,7 @@ as_dbl <- function(x) if (is.double(x)) x else as.double(x)
 # about 6ms per 1e6 strings on one thread, even where it changes nothing.
 as_utf8 <- function(x) if (l10n_info()[["UTF-8"]]) x else enc2utf8(x)
 
+# `nthreads` as an integer, once it's checked.
 check_nthreads <- function(nthreads) {
   if (
     !is.numeric(nthreads) ||
@@ -28,6 +29,7 @@ check_nthreads <- function(nthreads) {
   ) {
     stop("`nthreads` must be a single non-negative whole number.")
   }
+
   as.integer(nthreads)
 }
 
@@ -38,12 +40,15 @@ as_columns <- function(x, arg) {
   if (!is.list(x) || length(x) == 0L) {
     stop("`", arg, "` must be a data frame or a list of columns.")
   }
+
   x <- x |> as.list() |> unname()
+
   is_column <- function(v) is.atomic(v) || (is.list(v) && !is.data.frame(v))
   same_length <- lengths(x) |> unique() |> length() == 1L
   if (!same_length || !all(vapply(x, is_column, NA))) {
     stop("The columns of `", arg, "` must be vectors of the same length.")
   }
+
   x
 }
 
@@ -54,6 +59,7 @@ index_levels <- function(x, m, nthreads) {
   if (is.integer(m) || is.logical(m)) {
     return(index_codes(x, m, nthreads))
   }
+
   codes <- as.integer(x)
   codes[is.na(codes)] <- length(m) # NA codes take the last element
   m[codes]

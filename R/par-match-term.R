@@ -142,8 +142,10 @@ par_count_term <- function(
       "`weights` must be `NULL`, or numbers as long as `terms`, without `NA`."
     )
   }
+
   weights <- if (!is.null(weights)) as.double(weights)
   rs <- function(...) par_count_term_rs(..., weights) # binds `weights`
+
   run_terms(
     rs,
     x,
@@ -196,18 +198,23 @@ par_match_term_all <- function(
       fixed,
       nthreads
     )
-    sizes <- tabulate(lv$x, nlevels(x)) # pairs per level
+
+    # Pairs per level, and so per element that isn't NA.
+    sizes <- tabulate(lv$x, nlevels(x))
     codes <- as.integer(x)
     i <- which(!is.na(codes))
     counts <- sizes[codes[i]]
+
     # Each element's run of rows in `lv`.
     rows <- sequence(counts, from = cumsum(c(1L, sizes))[codes[i]])
+
     return(list2DF(list(
       x = rep.int(i, counts),
       term = lv$term[rows],
       n = lv$n[rows]
     )))
   }
+
   list2DF(run_terms(
     par_match_term_all_rs,
     x,
@@ -281,10 +288,13 @@ par_replace_term <- function(
   if (isTRUE(fixed) && !all(nzchar(terms))) {
     stop("`terms` must not contain `\"\"`.")
   }
+
   replacement <- enc2utf8(replacement)
   rs <- function(...) par_replace_term_rs(..., replacement) # binds it
+
   out <- run_terms(rs, x, terms, ignore_case, whole_word, fixed, nthreads)
   names(out) <- if (!is.factor(x)) names(x) # as gsub() keeps them
+
   out
 }
 

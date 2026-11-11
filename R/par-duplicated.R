@@ -68,7 +68,8 @@ par_duplicated <- function(
     return(par_duplicated_rs(x, fromLast, nthreads) %||% base())
   }
 
-  # Rust marks rows by 32-bit positions, so longer data frames go to base.
+  # Data frames from here on. Rust marks rows by 32-bit positions, so longer
+  # ones go to base.
   if (
     !isFALSE(incomparables) ||
       !is_bool(fromLast) ||
@@ -76,17 +77,22 @@ par_duplicated <- function(
   ) {
     return(base())
   }
+
   if (length(x) == 1L) {
     # Base compares a single column as a vector.
     return(par_duplicated(x[[1L]], fromLast = fromLast, nthreads = nthreads))
   }
+
   if (length(x) == 0L || nrow(x) < RUST_MIN) {
     return(base())
   }
+
+  # Each column as Rust compares it, or base for all if one can't be.
   cols <- lapply(x, dup_column, nthreads)
   if (vapply(cols, is.null, NA) |> any()) {
     return(base())
   }
+
   par_duplicated_rows_rs(unname(cols), fromLast, nthreads)
 }
 
@@ -102,15 +108,19 @@ par_unique <- function(
     keep <- !par_duplicated(x, incomparables, fromLast, nthreads)
     return(keep_rows(x, keep))
   }
+
   nthreads <- check_nthreads(nthreads)
   base <- function() unique(x, incomparables, fromLast = fromLast)
+
   if (!duplicated_in_rust(x, incomparables, fromLast)) {
     return(base())
   }
+
   out <- par_unique_rs(x, fromLast, nthreads)
   if (is.null(out)) {
     return(base())
   }
+
   # unique() keeps the class and time zone of Dates and POSIXct, and a factor
   # keeps its levels and class; everything else is dropped.
   if (is.factor(x)) {
@@ -121,6 +131,7 @@ par_unique <- function(
       attr(out, "tzone") <- attr(x, "tzone")
     }
   }
+
   out
 }
 
@@ -130,12 +141,14 @@ keep_rows <- function(x, keep) {
     # Subclasses may have their own `[` method.
     return(x[keep, , drop = FALSE])
   }
+
   # `[.data.frame` gives the same, but spends most of its time checking
   # the new row names for duplicates, which kept rows can't have.
   keep <- which(keep)
   take <- function(col) {
     if (is.null(dim(col))) col[keep] else col[keep, , drop = FALSE]
   }
+
   out <- lapply(x, take)
   attributes(out) <- attributes(x)
   attr(out, "row.names") <- if (.row_names_info(x) < 0L) {
@@ -143,6 +156,7 @@ keep_rows <- function(x, keep) {
   } else {
     attr(x, "row.names")[keep]
   }
+
   out
 }
 
@@ -158,6 +172,7 @@ par_any_duplicated <- function(
   # the first overall, so base's early stop is kept where it is quick.
   slice <- 65536L
   n <- length(x)
+
   if (is.atomic(x) && is.null(dim(x)) && n > 2L * slice) {
     i <- if (isTRUE(fromLast)) seq.int(n - slice + 1L, n) else seq_len(slice)
     w <- anyDuplicated(x[i], incomparables, fromLast = fromLast)
@@ -165,16 +180,19 @@ par_any_duplicated <- function(
       return(i[w])
     }
   }
+
   # Base compares a list such as a POSIXlt by its elements, and finds no
   # duplicate in a data frame without columns, unlike duplicated().
   if (!is.atomic(x) && !(is.data.frame(x) && length(x) > 0L)) {
     check_nthreads(nthreads)
     return(anyDuplicated(x, incomparables, fromLast = fromLast))
   }
+
   # unname(): a matrix's row names would name the position.
   w <- par_duplicated(x, incomparables, fromLast, nthreads) |>
     which() |>
     unname()
+
   # Base scans from the end with `fromLast`, so it finds the last one.
   if (!length(w)) {
     0L

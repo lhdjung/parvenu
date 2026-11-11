@@ -30,6 +30,8 @@ par_rowsum <- function(
   nthreads = getOption("parvenu.threads", 0L)
 ) {
   nthreads <- check_nthreads(nthreads)
+
+  # Base for what Rust doesn't cover.
   if (
     !is.numeric(x) ||
       is.object(x) ||
@@ -44,23 +46,30 @@ par_rowsum <- function(
   ) {
     return(rowsum(x, group, reorder = reorder, na.rm = na.rm, ...))
   }
+
   if (anyNA(group)) {
     warning("missing values for 'group'")
   }
+
   # The groups, sorted as base sorts them.
   groups <- par_unique(group, nthreads = nthreads)
   if (reorder) {
     groups <- sort(groups, na.last = TRUE, method = "quick")
   }
+
   # Base finds each row's group by its raw value, not as match() compares
   # classed ones, such as difftime by its printed number.
   codes <- par_match(unclass(group), unclass(groups), nthreads = nthreads)
+
   # Of NA and NaN in one group, base keeps the first or the second,
   # depending on how R was compiled.
   nan_first <- !is.nan(rowsum(c(NA, NaN), c(1, 1))[1L])
   out <- par_rowsum_rs(x, codes, length(groups), na.rm, nan_first, nthreads)
+
+  # A matrix with a row per group, named by the group.
   dim(out) <- c(length(groups), NCOL(x))
   # colnames() fails on a 1-d array with dimnames, which base sums as a vector.
   dimnames(out) <- list(as.character(groups), if (is.matrix(x)) colnames(x))
+
   out
 }
