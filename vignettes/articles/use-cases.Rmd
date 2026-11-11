@@ -235,7 +235,9 @@ over many terms, use `par_match_term(ignore_case = TRUE)` instead, since
 `(?i)` makes a large alternation slow.
 
 Factor columns are matched by their levels, so a factor of a million
-elements with 50 levels costs little more than matching 50 strings.
+elements with 50 levels costs little more than matching 50 strings. See
+[Using parvenu well](using-parvenu-well.html) for this and other ways to
+keep calls fast.
 
 ## Extracting and rewriting parts of strings
 

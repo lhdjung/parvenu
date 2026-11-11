@@ -1,0 +1,170 @@
+
+Factor against character: 1e7 elements, table of 1e7 strings
+
+ 100 distinct values
+# A tibble: 6 × 2
+  expression       median
+  <bch:expr>     <bch:tm>
+1 match_chr       78.83ms
+2 match_fct        7.86ms
+3 match_fct_base     2.3s
+4 detect_chr      35.75ms
+5 detect_fct       3.58ms
+6 par_factor      32.79ms
+
+ 1e+05 distinct values
+# A tibble: 6 × 2
+  expression       median
+  <bch:expr>     <bch:tm>
+1 match_chr      106.68ms
+2 match_fct       16.28ms
+3 match_fct_base    1.58s
+4 detect_chr      75.46ms
+5 detect_fct       6.33ms
+6 par_factor     558.58ms
+
+What a function returns: one regex in 1e5 strings
+# A tibble: 6 × 2
+  expression    median
+  <bch:expr>  <bch:tm>
+1 detect        2.22ms
+2 count         2.87ms
+3 locate           3ms
+4 extract       8.45ms
+5 extract_all  10.47ms
+6 replace_all  11.67ms
+
+1000 terms in 1e5 strings
+# A tibble: 3 × 2
+  expression               median
+  <bch:expr>             <bch:tm>
+1 detect_alternation       50.5ms
+2 match_term               17.7ms
+3 match_term_ignore_case   18.3ms
+# A tibble: 1 × 2
+  expression             median
+  <bch:expr>           <bch:tm>
+1 detect_alternation_i    14.9s
+
+1e4 terms in 100 strings: the first call builds the automaton
+first call: 11 ms
+# A tibble: 1 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 repeated      162µs
+
+Small inputs: match(a, a) on a permutation
+
+ 1000 elements
+# A tibble: 2 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 base         10.7µs
+2 parvenu      16.7µs
+
+ 10000 elements
+# A tibble: 2 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 base        343.7µs
+2 parvenu      97.7µs
+
+ 1e+05 elements
+# A tibble: 2 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 base         18.3ms
+2 parvenu     675.9µs
+
+Mixed encodings: 1e6 strings in 5e5
+# A tibble: 4 × 2
+  expression            median
+  <bch:expr>          <bch:tm>
+1 all_utf8              7.44ms
+2 one_latin1           39.21ms
+3 one_latin1_enc2utf8   10.8ms
+4 base                 30.51ms
+
+1e6 times over 54 years, as UTC and as local times in Berlin
+# A tibble: 2 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 utc          12.7ms
+2 berlin        338ms
+# A tibble: 2 × 2
+  expression    median
+  <bch:expr>  <bch:tm>
+1 base_utc       14.5s
+2 base_berlin    22.4s
+# A tibble: 2 × 2
+  expression              median
+  <bch:expr>            <bch:tm>
+1 berlin_skipped           1.06s
+2 berlin_skipped_format 289.17ms
+[1] "2024-03-31 CET" "1970-11-07 CET"
+[1] NA                        "1970-11-07 07:03:09 CET"
+
+Tables of 1e7 values with one decimal
+# A tibble: 2 × 2
+  expression      median
+  <bch:expr>    <bch:tm>
+1 par_table_dbl     4.1s
+2 table_dbl        5.51s
+# A tibble: 2 × 2
+  expression      median
+  <bch:expr>    <bch:tm>
+1 par_table_int    454ms
+2 table_int        534ms
+
+findInterval: 1e7 values into 1e4 breaks
+# A tibble: 4 × 2
+  expression         median
+  <bch:expr>       <bch:tm>
+1 base_unsorted     912.5ms
+2 parvenu_unsorted   29.6ms
+3 base_sorted        24.8ms
+4 parvenu_sorted       28ms
+
+Two key columns: 1e7 rows in 1e6
+# A tibble: 1 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 match_rows   68.7ms
+# A tibble: 1 × 2
+  expression   median
+  <bch:expr> <bch:tm>
+1 paste_keys      11s
+
+One call against 8 forked workers: a regex in 4e5 strings
+# A tibble: 3 × 2
+  expression         median
+  <bch:expr>       <bch:tm>
+1 one_call           34.9ms
+2 workers            95.8ms
+3 workers_1_thread  102.9ms
+
+R version 4.5.2 (2025-10-31)
+Platform: aarch64-apple-darwin20
+Running under: macOS Tahoe 26.5.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: Europe/Zurich
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] parvenu_0.0.0.9001
+
+loaded via a namespace (and not attached):
+ [1] compiler_4.5.2  magrittr_2.0.5  bench_1.1.4     cli_3.6.6      
+ [5] parallel_4.5.2  pillar_1.11.1   glue_1.8.1      tibble_3.3.1   
+ [9] utf8_1.2.6      vctrs_0.7.3     lifecycle_1.0.5 pkgconfig_2.0.3
+[13] rlang_1.3.0    
