@@ -59,3 +59,10 @@ test_that("par_rowsum() takes a matrix without columns", {
   x <- matrix(0, length(g), 0)
   expect_identical(par_rowsum(x, g), rowsum(x, g))
 })
+
+test_that("par_rowsum() takes a 1-d array with dimnames", {
+  n <- 2e4
+  x <- array(as.double(seq_len(n)), n, list(as.character(seq_len(n))))
+  g <- rep(1:2, n / 2)
+  expect_identical(par_rowsum(x, g), rowsum(x, g))
+})

@@ -157,3 +157,23 @@ test_that("par_any_duplicated() agrees with anyDuplicated()", {
     }
   }
 })
+
+test_that("par_any_duplicated() follows base where it differs from duplicated()", {
+  # No names from a matrix's row names
+  m <- matrix(rep(1:3, 2e4), 2e4, 3, dimnames = list(paste0("r", 1:2e4), NULL))
+  lt <- as.POSIXlt(.POSIXct(rep(1:5, 4e3), "UTC"))
+  df <- data.frame(a = seq_len(2e4))[integer()]
+  for (x in list(m, lt, df, list(1, 1), NULL)) {
+    for (fl in c(FALSE, TRUE)) {
+      expect_identical(
+        par_any_duplicated(x, fromLast = fl),
+        anyDuplicated(x, fromLast = fl)
+      )
+    }
+  }
+})
+
+test_that("par_unique() drops the time zone of a Date, as base does", {
+  d <- structure(as.Date(rep(1:5, 4e3)), tzone = "UTC")
+  expect_identical(par_unique(d), unique(d))
+})

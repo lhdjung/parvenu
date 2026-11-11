@@ -60,6 +60,7 @@ par_rowsum <- function(
   nan_first <- !is.nan(rowsum(c(NA, NaN), c(1, 1))[1L])
   out <- par_rowsum_rs(x, codes, length(groups), na.rm, nan_first, nthreads)
   dim(out) <- c(length(groups), NCOL(x))
-  dimnames(out) <- list(as.character(groups), colnames(x))
+  # colnames() fails on a 1-d array with dimnames, which base sums as a vector.
+  dimnames(out) <- list(as.character(groups), if (is.matrix(x)) colnames(x))
   out
 }

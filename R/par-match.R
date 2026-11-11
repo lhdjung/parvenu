@@ -71,7 +71,8 @@ par_match <- function(
   if (is.factor(x) && length(x) >= RUST_MIN) {
     # Base converts all of `x` to strings; matching the levels is enough.
     # The extra `NA` level is for missing values.
-    m <- c(levels(x), NA_character_) |> match(table, nomatch)
+    m <- c(levels(x), NA_character_) |>
+      par_match(table, nomatch, nthreads = nthreads)
     return(index_codes(x, m, nthreads))
   }
 

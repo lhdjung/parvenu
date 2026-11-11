@@ -117,7 +117,9 @@ par_unique <- function(
     attributes(out) <- list(levels = levels(x), class = class(x))
   } else if (is.object(x)) {
     class(out) <- class(x)
-    attr(out, "tzone") <- attr(x, "tzone")
+    if (inherits(x, "POSIXct")) {
+      attr(out, "tzone") <- attr(x, "tzone")
+    }
   }
   out
 }
@@ -163,7 +165,16 @@ par_any_duplicated <- function(
       return(i[w])
     }
   }
-  w <- par_duplicated(x, incomparables, fromLast, nthreads) |> which()
+  # Base compares a list such as a POSIXlt by its elements, and finds no
+  # duplicate in a data frame without columns, unlike duplicated().
+  if (!is.atomic(x) && !(is.data.frame(x) && length(x) > 0L)) {
+    check_nthreads(nthreads)
+    return(anyDuplicated(x, incomparables, fromLast = fromLast))
+  }
+  # unname(): a matrix's row names would name the position.
+  w <- par_duplicated(x, incomparables, fromLast, nthreads) |>
+    which() |>
+    unname()
   # Base scans from the end with `fromLast`, so it finds the last one.
   if (!length(w)) {
     0L

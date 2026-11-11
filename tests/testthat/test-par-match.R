@@ -127,3 +127,19 @@ test_that("more threads than cores count as all cores", {
   x <- sample.int(100L, 1e5, TRUE)
   expect_identical(par_match(x, 1:50, nthreads = 1e4), match(x, 1:50))
 })
+
+test_that("a factor's levels are looked up in every kind of table", {
+  f <- factor(sample(c(letters, NA), 2e4, TRUE), levels = c(letters, NA), exclude = NULL)
+  f[1:3] <- NA
+  tables <- list(
+    sample(c(letters, NA), 3e4, TRUE),
+    factor(sample(letters, 3e4, TRUE)),
+    seq_len(3e4),
+    c("a", NA),
+    list("a", 1),
+    NULL
+  )
+  for (t in tables) {
+    expect_identical(par_match(f, t, nomatch = 0L), match(f, t, nomatch = 0L))
+  }
+})
