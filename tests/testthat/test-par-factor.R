@@ -52,6 +52,20 @@ test_that("par_table() agrees with table()", {
   expect_identical(par_table(list(a, b)), table(list(a, b)))
   expect_identical(par_table(data.frame(a, b)), table(data.frame(a, b)))
   expect_identical(par_table(a[1:10]), table(a[1:10]))
+
+  # Three factors, no elements, no levels, only NAs.
+  d <- xs[[4]]
+  expect_identical(par_table(a, b, d), table(a, b, d))
+  expect_identical(par_table(integer()), table(integer()))
+  f0 <- factor(character())
+  expect_identical(par_table(f0), table(f0))
+  na <- rep(NA_character_, n)
+  expect_identical(par_table(na), table(na))
+  expect_identical(par_table(na, useNA = "ifany"), table(na, useNA = "ifany"))
+
+  # A factor with codes outside its levels: tabulate() drops them.
+  bad <- structure(c(1L, 5L, 0L, 2L), levels = c("x", "y"), class = "factor")
+  expect_identical(par_table(bad), table(bad))
   expect_error(par_table(a, 1:3), "same length")
   expect_error(par_table(), "nothing to tabulate")
 })

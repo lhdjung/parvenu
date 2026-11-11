@@ -85,14 +85,14 @@ differences: both take \code{nthreads}, and \code{par_factor()} ignores \code{nm
 \details{
 Both spend most of their time finding the distinct values and the
 position of each element among them. Here, \code{\link[=par_unique]{par_unique()}} and
-\code{\link[=par_match]{par_match()}} do that on several threads. Sorting the levels stays with
-base R.
+\code{\link[=par_match]{par_match()}} do that on several threads, and \code{par_table()} counts the
+cells on several threads too. Sorting the levels stays with base R.
 
 \code{factor()} of 1e7 strings in 1e5 levels takes about 0.8s in base R and
 0.5s here, most of it sorting the levels. For 1e7 integers in 1e6 levels,
 0.85s becomes 0.3s, most of it making the levels' strings. \code{table()} of
-1e7 integers takes about 1s in base and 0.45s here. The rest is R's own
-counting.
+1e7 integers in 1e4 levels takes about 0.25s in base and 20ms here; of a
+factor with 100 levels, 80ms and 5ms.
 
 A double vector is tabulated by its printed values, as in base. That
 takes seconds for 1e7 of them either way.

@@ -367,6 +367,89 @@ fn index_codes(codes: &[i32], m: Robj, nthreads: i32) -> extendr_api::Result<Rob
     ok.ok_or_else(|| Error::Other("malformed factor".into()))
 }
 
+/// The counts of `table()`, from the codes of each factor and its number of
+/// levels. An element's cell has its codes, less one, as digits, the first
+/// factor's lowest, as base builds `bin`. Elements with an `NA` code and
+/// cells outside the table are dropped, as `tabulate()` drops them. The
+/// counts are doubles for long vectors, as `tabulate()`'s are.
+/// @noRd
+#[extendr]
+fn table_codes(codes: List, dims: &[i32], nthreads: i32) -> extendr_api::Result<Robj> {
+    let codes: Vec<Robj> = codes.values().collect();
+    let codes = codes
+        .iter()
+        .map(|c| c.as_integer_slice())
+        .collect::<Option<Vec<_>>>();
+    let n = codes
+        .as_ref()
+        .and_then(|c| c.first())
+        .map_or(0, |c| c.len());
+    let codes = match codes {
+        Some(c) if c.len() == dims.len() && c.iter().all(|c| c.len() == n) => c,
+        _ => return Err(Error::Other("malformed codes".into())),
+    };
+
+    // Each factor's place value; saturating, so malformed codes can't wrap
+    // into the table.
+    let mut place = Vec::with_capacity(dims.len());
+    let mut ncells = 1i64;
+    for &d in dims {
+        place.push(ncells);
+        ncells *= d as i64;
+    }
+    let cell = |i: usize| {
+        let mut bin = 0i64;
+        for (c, &p) in codes.iter().zip(&place) {
+            if c[i] == NA_INT {
+                return None;
+            }
+            bin = bin.saturating_add((c[i] as i64 - 1).saturating_mul(p));
+        }
+        (0 <= bin && bin < ncells).then_some(bin as usize)
+    };
+
+    // Each chunk counts into its own cells, which are then added up. Chunks
+    // are at least twice the cells, so that adding them up stays small.
+    fn count<T: Copy + Send + From<u8> + std::ops::AddAssign>(
+        n: usize,
+        ncells: usize,
+        cell: impl Fn(usize) -> Option<usize> + Sync,
+        pool: &rayon::ThreadPool,
+    ) -> Vec<T> {
+        let chunk = (n / (4 * pool.current_num_threads()))
+            .max(MATCH_PER_THREAD)
+            .max(2 * ncells);
+        let tally = |k: usize| {
+            let mut y = vec![T::from(0); ncells];
+            for i in k * chunk..n.min((k + 1) * chunk) {
+                if let Some(b) = cell(i) {
+                    y[b] += T::from(1);
+                }
+            }
+            y
+        };
+        let add = |mut a: Vec<T>, b: Vec<T>| {
+            a.iter_mut().zip(b).for_each(|(a, b)| *a += b);
+            a
+        };
+        pool.install(|| {
+            (0..n.div_ceil(chunk))
+                .into_par_iter()
+                .map(tally)
+                .reduce_with(add)
+        })
+        .unwrap_or_else(|| vec![T::from(0); ncells])
+    }
+
+    let pool = pool(nthreads);
+    let ncells = ncells as usize;
+    Ok(if n > i32::MAX as usize {
+        Doubles::from_values(count::<f64>(n, ncells, cell, &pool)).into()
+    } else {
+        Integers::from_values(count::<i32>(n, ncells, cell, &pool)).into()
+    })
+}
+
 /// `index_codes()` for either type; `None` if a code is outside the levels.
 fn index<T: Copy + Send + Sync>(
     codes: &[i32],
@@ -3131,6 +3214,7 @@ extendr_module! {
     mod parvenu;
     fn par_match_int;
     fn index_codes;
+    fn table_codes;
     fn par_match_dbl;
     fn par_match_mixed;
     fn par_match_chr;

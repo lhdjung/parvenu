@@ -518,9 +518,16 @@ with the same result, which is a use case, not a function.
   strings in 1e5 levels 0.76s, here 0.47s, most of it `order()` collating
   the levels (collapse `qF()` 0.13s, with its own order); of integers in
   1e6 levels 0.85s, here 0.3s, most of it `as.character()` of the levels
-  forced by `levels<-`. `table()` of integers 1.0s, here 0.44s, the rest
-  `as.integer()`, `is.na<-`, and `tabulate()` in R; of strings 0.89s, here
-  0.66s.
+  forced by `levels<-`. `table()` of integers in 1e4 levels 0.25s, here
+  20ms; in 1e6 levels 0.54s, here 65ms, or 0.18s once the names are used;
+  of strings in 1e5 levels 0.48s, here 0.26s, most of it `order()`
+  collating the levels; of a factor 76ms, here 4ms (2026-11-11).
+  `table_codes()` counts the cells in one parallel pass, where R's cell
+  index, `NA` filter, and `tabulate()` took four passes and about 0.1s.
+  Levels that `par_factor()` found are set with `attr<-`, skipping the
+  duplicate check of `levels<-`, so `as.character()` of integer levels stays
+  a deferred ALTREP vector: the strings, about 0.1s per 1e6, are made when
+  first used, and a table only counted never makes them.
 
 `par_find_interval()`:
 

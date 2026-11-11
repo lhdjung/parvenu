@@ -14,6 +14,14 @@ par_match_int <- function(x, table, nomatch, nthreads) .Call(wrap__par_match_int
 #' @noRd
 index_codes <- function(codes, m, nthreads) .Call(wrap__index_codes, codes, m, nthreads)
 
+#' The counts of `table()`, from the codes of each factor and its number of
+#' levels. An element's cell has its codes, less one, as digits, the first
+#' factor's lowest, as base builds `bin`. Elements with an `NA` code and
+#' cells outside the table are dropped, as `tabulate()` drops them. The
+#' counts are doubles for long vectors, as `tabulate()`'s are.
+#' @noRd
+table_codes <- function(codes, dims, nthreads) .Call(wrap__table_codes, codes, dims, nthreads)
+
 #' Base matches Dates by their printed day, so 1.5 matches 1: `as_date`
 #' floors first. That only holds while Dates print as days, up to about
 #' 1e11; beyond 1e10 this returns `NULL` and R falls back to base.

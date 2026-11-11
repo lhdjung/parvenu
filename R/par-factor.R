@@ -10,14 +10,14 @@
 #'
 #' @details Both spend most of their time finding the distinct values and the
 #'   position of each element among them. Here, [par_unique()] and
-#'   [par_match()] do that on several threads. Sorting the levels stays with
-#'   base R.
+#'   [par_match()] do that on several threads, and `par_table()` counts the
+#'   cells on several threads too. Sorting the levels stays with base R.
 #'
 #'   `factor()` of 1e7 strings in 1e5 levels takes about 0.8s in base R and
 #'   0.5s here, most of it sorting the levels. For 1e7 integers in 1e6 levels,
 #'   0.85s becomes 0.3s, most of it making the levels' strings. `table()` of
-#'   1e7 integers takes about 1s in base and 0.45s here. The rest is R's own
-#'   counting.
+#'   1e7 integers in 1e4 levels takes about 0.25s in base and 20ms here; of a
+#'   factor with 100 levels, 80ms and 5ms.
 #'
 #'   A double vector is tabulated by its printed values, as in base. That
 #'   takes seconds for 1e7 of them either way.
@@ -63,14 +63,13 @@ par_factor <- function(
   as_chr <- is.object(x) ||
     !(is.character(x) || is.integer(x) || is.logical(x))
 
-  if (missing(levels)) {
-    # The sorted distinct values.
+  # Levels found here are distinct, so they skip the check of `levels<-`.
+  own_levels <- missing(levels)
+  if (own_levels) {
+    # The sorted distinct values. Only strings made from them can repeat.
     y <- par_unique(x, nthreads = nthreads)
     ind <- order(y)
-    if (as_chr) {
-      y <- as.character(y)
-    }
-    levels <- unique(y[ind])
+    levels <- if (as_chr) unique(as.character(y)[ind]) else y[ind]
   }
 
   # Evaluate `ordered` while `x` is still as given.
@@ -90,7 +89,9 @@ par_factor <- function(
 
   # Name the levels: by `labels`, numbered from one label, or as themselves.
   nlab <- length(labels)
-  if (missing(labels)) {
+  if (missing(labels) && own_levels) {
+    attr(f, "levels") <- as.character(levels)
+  } else if (missing(labels)) {
     levels(f) <- as.character(levels)
   } else if (nlab == length(levels)) {
     # Duplicated labels merge their levels.
@@ -186,11 +187,10 @@ par_table <- function(
     stop("nothing to tabulate")
   }
 
-  # Each factor adds its codes to `bin`, one cell index per element.
-  bin <- 0L
+  # Each factor's codes, levels, and number of levels.
+  codes <- list()
   lens <- NULL
   dims <- integer()
-  pd <- 1L
   dn <- NULL
 
   for (a in args) {
@@ -235,15 +235,14 @@ par_table <- function(
       ll <- levels(a)
     }
 
-    # From here on, `a` holds the codes.
-    a <- as.integer(a)
-
-    # Drop the excluded levels and values.
+    # Drop the excluded levels and values. Elsewhere, `a` stays a factor,
+    # whose codes table_codes() reads without a copy.
     if (is_fct && !miss_exc) {
       keep <- which(match(ll, exclude, nomatch = 0L) == 0L)
       ll <- ll[keep]
-      a <- par_match(a, keep, nthreads = nthreads)
+      a <- par_match(as.integer(a), keep, nthreads = nthreads)
     } else if (!is_fct && add_na) {
+      a <- as.integer(a)
       # Excluded values, which par_factor() made NA, took the new NA level, so
       # they are made NA again.
       if (ifany && !raw_na && add_ll) {
@@ -263,20 +262,13 @@ par_table <- function(
       stop("attempt to make a table with >= 2^31 elements")
     }
 
-    # This factor's codes become the next digit of the cell index.
     dn <- c(dn, list(ll))
-    bin <- bin + pd * (a - 1L)
-    pd <- pd * nl
+    codes <- c(codes, list(a))
   }
 
   # Count the cells. An NA code in any factor drops the element.
   names(dn) <- dnn
-  bin <- bin[!is.na(bin)]
-  if (length(bin)) {
-    bin <- bin + 1L
-  }
-
-  y <- array(tabulate(bin, pd), dims, dimnames = dn)
+  y <- array(table_codes(codes, dims, nthreads), dims, dimnames = dn)
   class(y) <- "table"
 
   y
