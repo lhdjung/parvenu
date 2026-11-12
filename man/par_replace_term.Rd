@@ -70,7 +70,9 @@ the terms after it.
 Hits don't overlap. The leftmost hit is replaced first, and the search
 goes on after it. If several terms start at the same place, the one
 earliest in \code{terms} wins. So put longer terms before their prefixes, such
-as \code{"new york"} before \code{"new"}.
+as \code{"new york"} before \code{"new"}. A regex term that can match the empty
+string, such as \code{"x*"}, has an empty hit at each place without another
+hit, but not right where a longer hit ended, as in \code{\link[=par_replace_all]{par_replace_all()}}.
 }
 \examples{
 par_replace_term(

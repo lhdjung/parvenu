@@ -416,8 +416,10 @@ par_as_posixct("2026-01-05 08:30:00.25", tz = "UTC")
 ```
 
 Times are parsed in Rust in any time zone. Outside UTC, base R's own code
-places each local time, which takes longer. Uncommon formats go to base R.
-`?par_as_date` lists the formats that Rust reads.
+places the start and end of each day, and every time of a day whose clock
+changes, which takes longer. Times that span more days than there are
+times, and uncommon formats, go to base R. `?par_as_date` lists the formats
+that Rust reads.
 
 ## Ranks, group sums, and interpolation
 

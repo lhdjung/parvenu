@@ -80,17 +80,18 @@ the format is ignored, \code{"24:00:00"} is midnight of the next day, and
 
 In UTC (\code{"UTC"}, \code{"GMT"}, or \code{""} in a session whose time zone is UTC),
 the parse returns the times directly. In other time zones, base R's own
-C code places each local time. So a time that doesn't exist there, or
-occurs twice, comes out as in base. That code runs on only two times per
-day for days without a change of clock, and on every time of days with
-one.
+C code places the local times, so a time that doesn't exist there, or
+occurs twice, comes out as in base. It places only the start and end of
+each day without a change of clock, whose times then follow from them,
+and every time of days with one. Where the times span more days than
+there are times, base R reads them all, as it is faster there.
 
 Factors are turned into strings first. Everything else goes to base R:
 \itemize{
 \item other formats, or several formats in \code{format}
 \item month names in other locales
 \item inputs that aren't strings or factors, or fewer than 1e4 of them
-\item \code{tryFormats} with \verb{\%z} in a time zone other than UTC
+\item \code{tryFormats} with \verb{\%j} or \verb{\%z}
 \item spaces other than ASCII ones
 \item seconds written in hexadecimal, with more than 15 digits, or as
 \code{nan(...)}

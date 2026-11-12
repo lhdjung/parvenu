@@ -20,16 +20,17 @@
 #'
 #'   In UTC (`"UTC"`, `"GMT"`, or `""` in a session whose time zone is UTC),
 #'   the parse returns the times directly. In other time zones, base R's own
-#'   C code places each local time. So a time that doesn't exist there, or
-#'   occurs twice, comes out as in base. That code runs on only two times per
-#'   day for days without a change of clock, and on every time of days with
-#'   one.
+#'   C code places the local times, so a time that doesn't exist there, or
+#'   occurs twice, comes out as in base. It places only the start and end of
+#'   each day without a change of clock, whose times then follow from them,
+#'   and every time of days with one. Where the times span more days than
+#'   there are times, base R reads them all, as it is faster there.
 #'
 #'   Factors are turned into strings first. Everything else goes to base R:
 #'   - other formats, or several formats in `format`
 #'   - month names in other locales
 #'   - inputs that aren't strings or factors, or fewer than 1e4 of them
-#'   - `tryFormats` with `%z` in a time zone other than UTC
+#'   - `tryFormats` with `%j` or `%z`
 #'   - spaces other than ASCII ones
 #'   - seconds written in hexadecimal, with more than 15 digits, or as
 #'   `nan(...)`

@@ -2087,10 +2087,12 @@ fn par_replace_term_rs(
             let (mut end, mut start) = (0, None);
             while let Some(Reverse((i, t, j))) = hits.pop() {
                 // Every hit pushed starts after the one popped, so this ends.
-                // A hit overlapping the last replaced one is skipped; else
-                // it is replaced. Either way, a regex term's next hit is
-                // queued.
-                let next = if i < end || start == Some(i) {
+                // A hit overlapping the last replaced one is skipped, and so
+                // is an empty one right where a non-empty one ended, as a
+                // single regex's matches go; else it is replaced. Either way,
+                // a regex term's next hit is queued.
+                let after = i == j && i == end && start.is_some_and(|s| s < end);
+                let next = if i < end || start == Some(i) || after {
                     search.hit_from(s, bounds, t, end.max(i + 1), None)
                 } else {
                     new.extend_from_slice(&s[end..i]);

@@ -8,6 +8,18 @@ expect_base <- function(x, table) {
   expect_identical(par_in(x, table), x %in% table)
 }
 
+test_that("every documented function is exported", {
+  # Tests run inside the namespace, so a lost export shows only here. The
+  # help index exists only in an installed package.
+  aliases <- system.file("help", "aliases.rds", package = "parvenu")
+  skip_if(aliases == "")
+  ns <- asNamespace("parvenu")
+  documented <- names(readRDS(aliases)) |>
+    Filter(f = function(a) exists(a, envir = ns, inherits = FALSE))
+  expect_contains(documented, "%par_in%")
+  expect_setequal(setdiff(documented, getNamespaceExports(ns)), character())
+})
+
 test_that("integers and doubles match as in base", {
   set.seed(1)
   expect_base(

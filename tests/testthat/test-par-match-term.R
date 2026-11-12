@@ -633,11 +633,19 @@ test_that("par_replace_term() searches a regex term again after a cut-short hit"
     par_replace_term(x, terms[-4], "#"),
     gsub(paste(terms[-4], collapse = "|"), "#", x, perl = TRUE)
   )
-  # Empty matches still come once per position
+  # Empty matches come once per position, but not right where a non-empty
+  # hit of any term ended, as with the terms as one regex
   expect_identical(
     par_replace_term("ab", c("a", "x*"), c("1", "-"), fixed = FALSE),
-    "1-b-"
+    "1b-"
   )
+  expect_identical(par_replace_term("ab", "x*", "-", fixed = FALSE), "-a-b-")
+  for (terms in list(c("a", "x*"), c("n+", "a?"), c("an", "b*"))) {
+    expect_identical(
+      par_replace_term(x, terms, "#", fixed = FALSE),
+      par_replace_all(x, paste(terms, collapse = "|"), "#")
+    )
+  }
 })
 
 test_that("whole_word counts marks and joiners as part of a word", {

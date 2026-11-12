@@ -239,7 +239,9 @@ par_match_term_all <- function(
 #'   Hits don't overlap. The leftmost hit is replaced first, and the search
 #'   goes on after it. If several terms start at the same place, the one
 #'   earliest in `terms` wins. So put longer terms before their prefixes, such
-#'   as `"new york"` before `"new"`.
+#'   as `"new york"` before `"new"`. A regex term that can match the empty
+#'   string, such as `"x*"`, has an empty hit at each place without another
+#'   hit, but not right where a longer hit ended, as in [par_replace_all()].
 #'
 #' @param terms A string vector of literal strings to find. `NA` is not
 #'   allowed, nor `""` unless `fixed = FALSE`.
