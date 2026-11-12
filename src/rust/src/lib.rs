@@ -2315,7 +2315,7 @@ enum Part {
 
 /// The parts of `format`; `None` if it has any other, or lacks the year,
 /// or the month and day or the day of the year, where R fills in what is
-/// missing in ways not copied here. From R 4.6.0 (`r46`), a digit after
+/// missing in ways not copied here. From R 4.6.2 (`r46`), a digit after
 /// `%OS` is skipped, as in `%OS3`.
 fn time_format(format: &[u8], r46: bool) -> Option<Vec<Part>> {
     use Part::*;
@@ -2407,7 +2407,7 @@ enum Parsed {
 /// format is ignored, numbers take all the digits their width allows, even
 /// past their range, `%H` takes 24 for 24:00:00, the next day, and `%OS`
 /// leaves the seconds at 0 where it reads no number from 0 to 61; from R
-/// 4.6.0 (`r46`), only where it reads no number at all: other numbers make
+/// 4.6.2 (`r46`), only where it reads no number at all: other numbers make
 /// the time `NA`, but infinite ones `NaN`, and so does a string that is
 /// just `"Inf"` or `"-Inf"`, which is left to R. `%y`
 /// below 69 is 20xx, `%I` is taken modulo 12 and `%p` adds 12 for PM, `%j`
