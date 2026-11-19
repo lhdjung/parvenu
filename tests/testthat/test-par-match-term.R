@@ -605,6 +605,89 @@ test_that("par_match_term_all() pairs strings with the terms they contain", {
   )
 })
 
+test_that("par_locate_term_all() finds where every hit is", {
+  # The definition: every start where a term occurs, overlaps included.
+  hits <- function(x, terms) {
+    rows <- list()
+    for (i in which(!is.na(x))) {
+      for (t in seq_along(terms)) {
+        k <- nchar(terms[t])
+        p <- seq_len(max(nchar(x[i]) - k + 1L, 0L))
+        p <- p[substring(x[i], p, p + k - 1L) == terms[t]]
+        if (length(p) > 0L) {
+          rows[[length(rows) + 1L]] <- cbind(i, t, p, p + k - 1L)
+        }
+      }
+    }
+    rows <- do.call(rbind, rows)
+    rows <- rows[order(rows[, 1], rows[, 3], rows[, 2]), , drop = FALSE]
+    out <- lapply(1:4, function(j) unname(rows[, j]))
+    list2DF(setNames(out, c("x", "term", "start", "end")))
+  }
+  set.seed(4)
+  e <- intToUtf8(233)
+  x <- vapply(
+    1:6000,
+    function(i) paste(sample(c(letters[1:6], " ", e), 10, TRUE), collapse = ""),
+    ""
+  )
+  x[c(5, 500)] <- NA
+  terms <- c("abc", "a", "fed", "bb", "ab", "a", "zz", e, paste0(e, "a"))
+  expected <- hits(x, terms)
+  expect_identical(par_locate_term_all(x, terms), expected)
+  expect_identical(par_locate_term_all(x, terms, nthreads = 1), expected)
+  expect_identical(par_locate_term_all(factor(x), terms), expected)
+
+  # The hits are those par_match_term_all() counts.
+  counts <- par_match_term_all(x, terms)
+  located <- par_locate_term_all(x, terms)
+  n <- table(factor(paste(located$x, located$term), unique(paste(counts$x, counts$term))))
+  expect_identical(as.vector(n), counts$n)
+
+  f <- factor(rep(c("ab", NA, "cd", "ab"), 5000), levels = c("cd", "ab", "zz"))
+  expect_identical(
+    par_locate_term_all(f, c("d", "b", "a")),
+    hits(as.character(f), c("d", "b", "a"))
+  )
+  expect_identical(
+    par_locate_term_all(c("york and new york", "rome", NA), c("new york", "york")),
+    list2DF(list(x = c(1L, 1L, 1L), term = c(2L, 1L, 2L), start = c(1L, 10L, 14L), end = c(4L, 17L, 17L)))
+  )
+  # Positions in the string as it is, after lowercasing to find the hits
+  expect_identical(
+    par_locate_term_all(c("café NEW YORK", "ÉTÉ york"), c("new york", "été"), TRUE),
+    list2DF(list(x = 1:2, term = 1:2, start = c(6L, 1L), end = c(13L, 3L)))
+  )
+  expect_identical(
+    par_locate_term_all(c("yorkshire", "York, uk"), "york", TRUE, whole_word = TRUE),
+    list2DF(list(x = 2L, term = 1L, start = 1L, end = 4L))
+  )
+  # An empty term has an empty hit before each character and at the end.
+  expect_identical(
+    par_locate_term_all(paste0("a", e), ""),
+    list2DF(list(x = c(1L, 1L, 1L), term = c(1L, 1L, 1L), start = 1:3, end = 0:2))
+  )
+  # Regex terms: each term's matches, as par_locate_all() finds them
+  rx <- c("[a-c]+", "f.")
+  m <- lapply(rx, function(r) par_locate_all(x[1:300], r))
+  ref <- do.call(rbind, lapply(1:300, function(i) {
+    if (is.na(x[i])) return(NULL)
+    rows <- lapply(1:2, function(t) {
+      if (nrow(m[[t]][[i]]) > 0L) cbind(i, t, m[[t]][[i]])
+    })
+    do.call(rbind, rows)
+  }))
+  ref <- ref[order(ref[, 1], ref[, 3], ref[, 2]), , drop = FALSE]
+  expect_identical(
+    par_locate_term_all(x[1:300], rx, fixed = FALSE),
+    list2DF(setNames(lapply(1:4, function(j) unname(ref[, j])), c("x", "term", "start", "end")))
+  )
+  expect_identical(
+    par_locate_term_all(character(), "a"),
+    list2DF(list(x = integer(), term = integer(), start = integer(), end = integer()))
+  )
+})
+
 test_that("par_replace_term() searches a regex term again after a cut-short hit", {
   # The "nn" from the second "n" is cut short by "an", and one after it counts
   for (fixed in c(TRUE, FALSE)) {

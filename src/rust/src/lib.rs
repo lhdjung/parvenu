@@ -21,6 +21,7 @@ extern "C" {
     fn SET_STRING_ELT(x: SEXP, i: isize, v: SEXP);
     fn SET_VECTOR_ELT(x: SEXP, i: isize, v: SEXP) -> SEXP;
     fn Rf_setAttrib(x: SEXP, name: SEXP, v: SEXP) -> SEXP;
+    fn Rf_shallow_duplicate(x: SEXP) -> SEXP;
     static R_NaString: SEXP;
     static R_DimSymbol: SEXP;
     static R_DimNamesSymbol: SEXP;
@@ -1402,29 +1403,41 @@ fn par_locate_all_rs(
                 .collect(),
         )
     });
-    // Only R's thread may make R vectors. Those with few rows share their
-    // `dim`, as attributes may, and all share the names "start" and "end":
-    // R copies the `dimnames` list itself, but not its elements.
+    // Only R's thread may make R vectors. A matrix of `m` rows, with the
+    // column names "start" and "end".
     let dimnames: Robj = List::from_values([Robj::from(()), Robj::from(["start", "end"])]).into();
-    let dims: Vec<Robj> = (0..=16).map(|m| Robj::from([m, 2])).collect();
+    let matrix = |m: usize| -> Robj {
+        let dim = Robj::from([m as i32, 2]);
+        unsafe {
+            let v = Robj::from_sexp(Rf_allocVector(13, 2 * m as isize));
+            Rf_setAttrib(v.get(), R_DimSymbol, dim.get());
+            Rf_setAttrib(v.get(), R_DimNamesSymbol, dimnames.get());
+            v
+        }
+    };
+    // Those with few rows are copies of one matrix each, which share its
+    // `dim` and `dimnames`. Setting them on each one, as R checks and copies
+    // the `dimnames` every time, took 0.63s for 1e6 strings instead of 0.49s.
+    // Most of the rest is R making the matrices; finding the matches takes
+    // 16ms.
+    let templates: Vec<Robj> = (0..=16).map(matrix).collect();
     let res: Robj = List::new(out.len()).into();
     for (i, rows) in out.into_iter().enumerate() {
         let rows = rows.unwrap_or(vec![[NA_INT; 2]]);
+        let m = rows.len();
         unsafe {
-            let m = rows.len();
-            let v = Rf_allocVector(13, 2 * m as isize);
+            let v = match templates.get(m) {
+                Some(t) => Rf_shallow_duplicate(t.get()),
+                None => matrix(m).get(),
+            };
+            // In the list before anything else is allocated, so it's kept
+            // from R's garbage collector.
             SET_VECTOR_ELT(res.get(), i as isize, v);
             let ints = INTEGER(v);
             for (k, [a, b]) in rows.into_iter().enumerate() {
                 *ints.add(k) = a;
                 *ints.add(m + k) = b;
             }
-            let dim = match dims.get(m) {
-                Some(dim) => dim.clone(),
-                None => Robj::from([m as i32, 2]),
-            };
-            Rf_setAttrib(v, R_DimSymbol, dim.get());
-            Rf_setAttrib(v, R_DimNamesSymbol, dimnames.get());
         }
     }
     Ok(res)
@@ -2240,6 +2253,78 @@ fn par_match_term_all_rs(
             Integers::from_values(ts),
             Integers::from_values(ns),
         ],
+    )?
+    .into())
+}
+
+/// Every hit of `terms` in each string, as `par_count_term_rs()` finds
+/// them, and where it is: a list of four integer vectors, the 1-based
+/// positions in `x` and in `terms`, and those of the hit's first and last
+/// characters, as `par_locate_rs()` counts them. Sorted by string, then
+/// start, then term. `NA` has no hits. Otherwise as `par_match_term_rs()`.
+/// @noRd
+#[extendr]
+fn par_locate_term_all_rs(
+    x: Robj,
+    terms: Robj,
+    ignore_case: bool,
+    word_start: bool,
+    word_end: bool,
+    fixed: bool,
+    nthreads: i32,
+) -> extendr_api::Result<Robj> {
+    let bounds = Bounds {
+        start: word_start,
+        end: word_end,
+    };
+    let m = compile_terms(&terms, ignore_case, bounds, fixed)?;
+    let x = unsafe { charsxps(&x) };
+    let mut out: Vec<Vec<[i32; 3]>> = vec![Vec::new(); x.len()];
+    per_string(
+        &mut out,
+        x,
+        Vec::new(),
+        nthreads,
+        || Search::new(&m),
+        |search, _, s| {
+            // Byte spans of the hits, the leftmost first. A term can't have
+            // two hits at one start, so (start, term) sorts them fully.
+            let mut hits = Vec::new();
+            search.each(s, bounds, true, |t, i, j| {
+                hits.push((i, t, j));
+                true
+            });
+            hits.sort_unstable();
+            // Characters: bytes that aren't UTF-8 continuation bytes. The
+            // starts come in order, so those before them are counted once.
+            let chars = |s: &[u8]| s.iter().filter(|&&b| b & 0xC0 != 0x80).count() as i32;
+            let (mut at, mut n) = (0, 0);
+            hits.into_iter()
+                .map(|(i, t, j)| {
+                    n += chars(&s[at..i]);
+                    at = i;
+                    [t as i32 + 1, n + 1, n + chars(&s[i..j])]
+                })
+                .collect()
+        },
+    );
+    let total: usize = out.iter().map(Vec::len).sum();
+    if total > i32::MAX as usize {
+        return Err(Error::Other("More than 2^31 - 1 hits.".into()));
+    }
+    // Flatten into four columns.
+    let mut cols: [Vec<i32>; 4] = std::array::from_fn(|_| Vec::with_capacity(total));
+    for (k, hits) in out.iter().enumerate() {
+        for &[t, start, end] in hits {
+            cols[0].push(k as i32 + 1);
+            cols[1].push(t);
+            cols[2].push(start);
+            cols[3].push(end);
+        }
+    }
+    Ok(List::from_names_and_values(
+        ["x", "term", "start", "end"],
+        cols.map(Integers::from_values),
     )?
     .into())
 }
@@ -3233,6 +3318,7 @@ extendr_module! {
     fn par_count_term_rs;
     fn par_which_term_rs;
     fn par_match_term_all_rs;
+    fn par_locate_term_all_rs;
     fn par_find_interval_rs;
     fn par_unique_rs;
     fn par_extract_all_rs;

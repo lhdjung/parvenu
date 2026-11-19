@@ -12,6 +12,8 @@
 #' - `par_match_term_all()` returns every pair of a string and a term it
 #'   contains, with the number of hits. This is a document-term matrix in long
 #'   form.
+#' - `par_locate_term_all()` finds where each hit is, such as to highlight
+#'   terms or show them in context.
 #'
 #' @details Terms are literal, as in `grepl(fixed = TRUE)`, so no character
 #'   needs escaping. With `fixed = FALSE`, they are regular expressions.
@@ -78,6 +80,12 @@
 #'   position in `terms` found there, and `n` is the number of its hits, as
 #'   `par_count_term()` counts them. Strings with no term, and `NA`, have no
 #'   rows.
+#'   - `par_locate_term_all()`: a data frame with one row per hit, the hits
+#'   that `par_count_term()` counts, sorted by `x`, then by `start`, then by
+#'   `term`. Columns `x` and `term` are as above. `start` and `end` are the
+#'   positions of the first and last characters of the hit, as in
+#'   [par_locate()]. An empty term's hit has `end` one less than `start`.
+#'   Strings with no term, and `NA`, have no rows.
 #'
 #' @export
 #'
@@ -101,6 +109,8 @@
 #' par_which_term(c("york and new york", "rome", NA), cities)
 #'
 #' par_match_term_all(c("york and new york", "rome", NA), cities)
+#'
+#' par_locate_term_all(c("york and new york", "rome", NA), cities)
 #'
 #' par_match_term(c("call 555-1234", "mail a@b.org"), c("\\d{3}-\\d{4}", "@"), fixed = FALSE)
 par_match_term <- function(
@@ -198,21 +208,7 @@ par_match_term_all <- function(
       fixed,
       nthreads
     )
-
-    # Pairs per level, and so per element that isn't NA.
-    sizes <- tabulate(lv$x, nlevels(x))
-    codes <- as.integer(x)
-    i <- which(!is.na(codes))
-    counts <- sizes[codes[i]]
-
-    # Each element's run of rows in `lv`.
-    rows <- sequence(counts, from = cumsum(c(1L, sizes))[codes[i]])
-
-    return(list2DF(list(
-      x = rep.int(i, counts),
-      term = lv$term[rows],
-      n = lv$n[rows]
-    )))
+    return(rows_by_level(x, lv))
   }
 
   list2DF(run_terms(
@@ -224,6 +220,58 @@ par_match_term_all <- function(
     fixed,
     nthreads
   ))
+}
+
+#' @rdname par_match_term
+#' @export
+par_locate_term_all <- function(
+  x,
+  terms,
+  ignore_case = FALSE,
+  whole_word = FALSE,
+  fixed = TRUE,
+  nthreads = getOption("parvenu.threads", 0L)
+) {
+  if (is.factor(x) && nlevels(x) < length(x)) {
+    # The hits in the levels, repeated for the elements of each level.
+    lv <- par_locate_term_all(
+      levels(x),
+      terms,
+      ignore_case,
+      whole_word,
+      fixed,
+      nthreads
+    )
+    return(rows_by_level(x, lv))
+  }
+
+  list2DF(run_terms(
+    par_locate_term_all_rs,
+    x,
+    terms,
+    ignore_case,
+    whole_word,
+    fixed,
+    nthreads
+  ))
+}
+
+# The rows of `lv`, a data frame sorted by column `x` that indexes the levels
+# of the factor `x`, repeated for the elements of each level. Column `x` then
+# indexes the elements.
+rows_by_level <- function(x, lv) {
+  # Rows per level, and so per element that isn't NA.
+  sizes <- tabulate(lv$x, nlevels(x))
+  codes <- as.integer(x)
+  i <- which(!is.na(codes))
+  counts <- sizes[codes[i]]
+
+  # Each element's run of rows in `lv`.
+  rows <- sequence(counts, from = cumsum(c(1L, sizes))[codes[i]])
+
+  out <- lapply(lv, `[`, rows)
+  out$x <- rep.int(i, counts)
+  list2DF(out)
 }
 
 #' Replace dictionary terms, in parallel

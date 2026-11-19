@@ -11,8 +11,8 @@ Description: Multithreaded functions for large vectors, written in Rust,
     key columns at once. Text search detects, counts, locates, extracts,
     and replaces regex matches, in the syntax of Rust's regex crate, and
     looks up many literal terms or regexes at once: which of them each
-    string contains, how many hits it has, or replacing them all, in one
-    pass per string.
+    string contains, how many hits it has, where they are, or replacing
+    them all, in one pass per string.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

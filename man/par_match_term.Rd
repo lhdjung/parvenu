@@ -5,6 +5,7 @@
 \alias{par_count_term}
 \alias{par_which_term}
 \alias{par_match_term_all}
+\alias{par_locate_term_all}
 \title{Find which term each string contains, in parallel}
 \usage{
 par_match_term(
@@ -36,6 +37,15 @@ par_which_term(
 )
 
 par_match_term_all(
+  x,
+  terms,
+  ignore_case = FALSE,
+  whole_word = FALSE,
+  fixed = TRUE,
+  nthreads = getOption("parvenu.threads", 0L)
+)
+
+par_locate_term_all(
   x,
   terms,
   ignore_case = FALSE,
@@ -104,6 +114,12 @@ order and each once. It is \code{integer(0)} if none, or \code{NA} where \code{x
 position in \code{terms} found there, and \code{n} is the number of its hits, as
 \code{par_count_term()} counts them. Strings with no term, and \code{NA}, have no
 rows.
+\item \code{par_locate_term_all()}: a data frame with one row per hit, the hits
+that \code{par_count_term()} counts, sorted by \code{x}, then by \code{start}, then by
+\code{term}. Columns \code{x} and \code{term} are as above. \code{start} and \code{end} are the
+positions of the first and last characters of the hit, as in
+\code{\link[=par_locate]{par_locate()}}. An empty term's hit has \code{end} one less than \code{start}.
+Strings with no term, and \code{NA}, have no rows.
 }
 }
 \description{
@@ -119,6 +135,8 @@ drug an abstract names.
 \item \code{par_match_term_all()} returns every pair of a string and a term it
 contains, with the number of hits. This is a document-term matrix in long
 form.
+\item \code{par_locate_term_all()} finds where each hit is, such as to highlight
+terms or show them in context.
 }
 }
 \details{
@@ -159,6 +177,8 @@ par_count_term("good food, not bad", c("good", "bad"), weights = c(1, -2))
 par_which_term(c("york and new york", "rome", NA), cities)
 
 par_match_term_all(c("york and new york", "rome", NA), cities)
+
+par_locate_term_all(c("york and new york", "rome", NA), cities)
 
 par_match_term(c("call 555-1234", "mail a@b.org"), c("\\\\d{3}-\\\\d{4}", "@"), fixed = FALSE)
 }

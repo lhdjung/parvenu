@@ -129,6 +129,14 @@ par_which_term_rs <- function(x, terms, ignore_case, word_start, word_end, fixed
 #' @noRd
 par_match_term_all_rs <- function(x, terms, ignore_case, word_start, word_end, fixed, nthreads) .Call(wrap__par_match_term_all_rs, x, terms, ignore_case, word_start, word_end, fixed, nthreads)
 
+#' Every hit of `terms` in each string, as `par_count_term_rs()` finds
+#' them, and where it is: a list of four integer vectors, the 1-based
+#' positions in `x` and in `terms`, and those of the hit's first and last
+#' characters, as `par_locate_rs()` counts them. Sorted by string, then
+#' start, then term. `NA` has no hits. Otherwise as `par_match_term_rs()`.
+#' @noRd
+par_locate_term_all_rs <- function(x, terms, ignore_case, word_start, word_end, fixed, nthreads) .Call(wrap__par_locate_term_all_rs, x, terms, ignore_case, word_start, word_end, fixed, nthreads)
+
 #' `findInterval(x, vec)`: how many of the sorted `vec` are at most each
 #' `x` (below it, if `left_open`), with base's adjustments at the ends.
 #' `NaN` gives `NA`. `vec` must not be empty.

@@ -1,22 +1,22 @@
 ahocorasick: 1000 terms in 1e6 strings
-ac_build(): 1.2ms  first par_count_term() with new terms: 0.03 s
+ac_build(): 1.19ms  first par_count_term() with new terms: 0.032 s
 
 Does each string contain a term?
 # A tibble: 3 × 2
   expression       median
   <bch:expr>     <bch:tm>
-1 ahocorasick       319ms
-2 par_detect       53.7ms
-3 par_match_term     25ms
+1 ahocorasick     317.9ms
+2 par_detect       41.5ms
+3 par_match_term   25.1ms
 
 Hits per string, overlapping
 # A tibble: 4 × 2
   expression    median
   <bch:expr>  <bch:tm>
-1 ahocorasick  416.8ms
-2 parvenu_1    162.3ms
-3 parvenu_2     82.1ms
-4 parvenu_all   24.3ms
+1 ahocorasick  412.8ms
+2 parvenu_1    159.8ms
+3 parvenu_2       82ms
+4 parvenu_all   31.4ms
 
 Same, 1e4 strings of ~2200 bytes: the same text in longer strings
 # A tibble: 3 × 2
@@ -24,39 +24,39 @@ Same, 1e4 strings of ~2200 bytes: the same text in longer strings
   <bch:expr>  <bch:tm>
 1 ahocorasick    149ms
 2 parvenu_1      145ms
-3 parvenu_all     25ms
+3 parvenu_all     27ms
 
 Same, uppercased, ignoring case
 # A tibble: 2 × 2
   expression    median
   <bch:expr>  <bch:tm>
-1 ahocorasick  346.1ms
-2 parvenu_all   33.1ms
+1 ahocorasick  340.3ms
+2 parvenu_all   38.8ms
 
 Replace every term, earliest term first
 # A tibble: 4 × 2
   expression    median
   <bch:expr>  <bch:tm>
-1 ahocorasick    526ms
-2 parvenu_1      243ms
-3 parvenu_2      150ms
-4 parvenu_all     79ms
+1 ahocorasick  541.2ms
+2 parvenu_1    245.2ms
+3 parvenu_2    149.2ms
+4 parvenu_all   82.1ms
 
-Every term in each string: ahocorasick gives every hit's position
+Where every hit is
 # A tibble: 3 × 2
-  expression              median
-  <bch:expr>            <bch:tm>
-1 ahocorasick_locate_df    294ms
-2 par_which_term          68.2ms
-3 par_match_term_all      41.8ms
+  expression    median
+  <bch:expr>  <bch:tm>
+1 ahocorasick  369.7ms
+2 parvenu_1    185.1ms
+3 parvenu_all   42.7ms
 
 10,000 terms, hits per string
 # A tibble: 3 × 2
   expression    median
   <bch:expr>  <bch:tm>
-1 ahocorasick  315.3ms
-2 parvenu_1    217.2ms
-3 parvenu_all   39.8ms
+1 ahocorasick    360ms
+2 parvenu_1      196ms
+3 parvenu_all     38ms
 
 stringfish: regexes in 1e6 strings, 8 threads
 
@@ -64,61 +64,61 @@ Detect [aeiou]{3}[0-9]
 # A tibble: 4 × 2
   expression       median
   <bch:expr>     <bch:tm>
-1 stringfish_1   216.09ms
-2 stringfish_all  28.87ms
-3 parvenu_1       42.41ms
-4 parvenu_all      8.23ms
+1 stringfish_1   215.72ms
+2 stringfish_all  28.88ms
+3 parvenu_1       42.75ms
+4 parvenu_all      7.15ms
 
 Detect ^q.*z\s 
 # A tibble: 4 × 2
   expression       median
   <bch:expr>     <bch:tm>
-1 stringfish_1    74.27ms
-2 stringfish_all  11.87ms
-3 parvenu_1       24.25ms
-4 parvenu_all      4.31ms
+1 stringfish_1    74.69ms
+2 stringfish_all  10.27ms
+3 parvenu_1       21.84ms
+4 parvenu_all      4.03ms
 
 Detect a fixed string
 # A tibble: 2 × 2
   expression       median
   <bch:expr>     <bch:tm>
-1 stringfish_all  12.61ms
-2 parvenu_all      5.18ms
+1 stringfish_all   12.3ms
+2 parvenu_all      3.88ms
 
 Detect an alternation of 1000 terms, 1e5 strings
 # A tibble: 2 × 2
   expression       median
   <bch:expr>     <bch:tm>
-1 stringfish_all    2.68s
-2 parvenu_all        26ms
+1 stringfish_all    2.73s
+2 parvenu_all      28.8ms
 
 Replace every match of [aeiou]{3} 
 # A tibble: 4 × 2
   expression       median
   <bch:expr>     <bch:tm>
-1 stringfish_1    475.5ms
-2 stringfish_all  160.7ms
-3 parvenu_1       104.6ms
-4 parvenu_all      47.2ms
+1 stringfish_1      393ms
+2 stringfish_all    146ms
+3 parvenu_1         102ms
+4 parvenu_all        45ms
 
 Replace every match of [0-9] 
 # A tibble: 4 × 2
   expression       median
   <bch:expr>     <bch:tm>
-1 stringfish_1      465ms
-2 stringfish_all    160ms
-3 parvenu_1         333ms
-4 parvenu_all       203ms
+1 stringfish_1      443ms
+2 stringfish_all    183ms
+3 parvenu_1         332ms
+4 parvenu_all       197ms
 
 stringfish: match 1e7 strings against 1e6 keys
 # A tibble: 5 × 2
   expression       median
   <bch:expr>     <bch:tm>
-1 base              1.04s
-2 stringfish_1      3.33s
-3 stringfish_all    495ms
-4 parvenu_1      242.12ms
-5 parvenu_all     42.44ms
+1 base           601.31ms
+2 stringfish_1      3.11s
+3 stringfish_all 535.06ms
+4 parvenu_1      242.55ms
+5 parvenu_all     44.88ms
 
 R version 4.5.2 (2025-10-31)
 Platform: aarch64-apple-darwin20

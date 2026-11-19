@@ -103,11 +103,17 @@ b(
   parvenu_all = par_replace_term(x, terms, replacement)
 )
 
-cat("\nEvery term in each string: ahocorasick gives every hit's position\n")
+cat("\nWhere every hit is\n")
+located <- ac_locate_df(ac, x, overlapping = TRUE)
+located <- located[order(located$doc_id, located$start, located$pattern_id), ]
+stopifnot(identical(
+  unname(as.list(located)),
+  unname(as.list(par_locate_term_all(x, terms)))
+))
 b(
-  ahocorasick_locate_df = ac_locate_df(ac, x, overlapping = TRUE),
-  par_which_term = par_which_term(x, terms),
-  par_match_term_all = par_match_term_all(x, terms),
+  ahocorasick = ac_locate_df(ac, x, overlapping = TRUE),
+  parvenu_1 = par_locate_term_all(x, terms, nthreads = 1),
+  parvenu_all = par_locate_term_all(x, terms),
   check = FALSE
 )
 
