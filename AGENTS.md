@@ -55,8 +55,11 @@ a history on `figures`. The logo in `man/figures/` does belong on `main`.
 
 ## CI status
 
-CI passed on all four jobs at 2186e4d (2026-11-07), on R 4.6.2 as
-"release". R 4.6.2 changed how `strptime()` reads seconds, which only
-CI caught, since R 4.5 is installed locally. Linux and Windows differ
-from macOS in ways local tests miss, so check each job after a push with
-`gh run view <id>`.
+CI passed on all four jobs at 120d1c1 (2026-11-19), on R 4.6.2 as
+"release" and Rust 1.100 as "stable". R 4.6.2 changed how `strptime()`
+reads seconds, which only CI caught, since R 4.5 is installed locally.
+Rust 1.100's std calls `WaitOnAddress` on Windows, so
+`src/Makevars.win.in` links `-lsynchronization`; a new Rust can need
+another library there, which shows as "undefined reference" in
+`00install.out`. Linux and Windows differ from macOS in ways local tests
+miss, so check each job after a push with `gh run view <id>`.
