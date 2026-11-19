@@ -290,7 +290,7 @@ almost a second.
 ## Single calls
 
 Timed on 8 cores, against base R (the sections above and `bench/` have
-the details, and comparisons with collapse, stringi, and data.table):
+the details, and comparisons with collapse, stringi, stringfish, ahocorasick, and data.table):
 
 | Function | Replaces | Task | Time | Base R | Speedup |
 |----|----|----|----|----|----|
