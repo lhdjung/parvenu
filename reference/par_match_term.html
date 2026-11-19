@@ -10,6 +10,8 @@ drug an abstract names.
 par_match_term_all() returns every pair of a string and a term it
 contains, with the number of hits. This is a document-term matrix in long
 form.
+par_locate_term_all() finds where each hit is, such as to highlight
+terms or show them in context.
 
 "><meta property="og:description" content="For each string in x:
 par_match_term() finds the index of the first term in terms it
@@ -22,6 +24,8 @@ drug an abstract names.
 par_match_term_all() returns every pair of a string and a term it
 contains, with the number of hits. This is a document-term matrix in long
 form.
+par_locate_term_all() finds where each hit is, such as to highlight
+terms or show them in context.
 
 "><meta property="og:image" content="https://lhdjung.github.io/parvenu/logo.png"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -71,6 +75,8 @@ drug an abstract names.</p></li>
 <li><p><code>par_match_term_all()</code> returns every pair of a string and a term it
 contains, with the number of hits. This is a document-term matrix in long
 form.</p></li>
+<li><p><code>par_locate_term_all()</code> finds where each hit is, such as to highlight
+terms or show them in context.</p></li>
 </ul></div>
 
     <div class="section level2">
@@ -104,6 +110,15 @@ form.</p></li>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">par_match_term_all</span><span class="op">(</span></span>
+<span>  <span class="va">x</span>,</span>
+<span>  <span class="va">terms</span>,</span>
+<span>  ignore_case <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  whole_word <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  fixed <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  nthreads <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"parvenu.threads"</span>, <span class="fl">0L</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">par_locate_term_all</span><span class="op">(</span></span>
 <span>  <span class="va">x</span>,</span>
 <span>  <span class="va">terms</span>,</span>
 <span>  ignore_case <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -190,6 +205,12 @@ order and each once. It is <code>integer(0)</code> if none, or <code>NA</code> w
 position in <code>terms</code> found there, and <code>n</code> is the number of its hits, as
 <code>par_count_term()</code> counts them. Strings with no term, and <code>NA</code>, have no
 rows.</p></li>
+<li><p><code>par_locate_term_all()</code>: a data frame with one row per hit, the hits
+that <code>par_count_term()</code> counts, sorted by <code>x</code>, then by <code>start</code>, then by
+<code>term</code>. Columns <code>x</code> and <code>term</code> are as above. <code>start</code> and <code>end</code> are the
+positions of the first and last characters of the hit, as in
+<code><a href="par_extract.html">par_locate()</a></code>. An empty term's hit has <code>end</code> one less than <code>start</code>.
+Strings with no term, and <code>NA</code>, have no rows.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -248,6 +269,12 @@ than the automaton, but much faster than a regex per term.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   x term n</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 1    1 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2 1    2 2</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu">par_locate_term_all</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"york and new york"</span>, <span class="st">"rome"</span>, <span class="cn">NA</span><span class="op">)</span>, <span class="va">cities</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   x term start end</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 1    2     1   4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 1    1    10  17</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 1    2    14  17</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">par_match_term</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"call 555-1234"</span>, <span class="st">"mail a@b.org"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"\\d{3}-\\d{4}"</span>, <span class="st">"@"</span><span class="op">)</span>, fixed <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1 2</span>

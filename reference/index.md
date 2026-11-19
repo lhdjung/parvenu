@@ -85,6 +85,7 @@ Many literal terms at once, in one pass per string.
   [`par_count_term()`](https://lhdjung.github.io/parvenu/reference/par_match_term.md)
   [`par_which_term()`](https://lhdjung.github.io/parvenu/reference/par_match_term.md)
   [`par_match_term_all()`](https://lhdjung.github.io/parvenu/reference/par_match_term.md)
+  [`par_locate_term_all()`](https://lhdjung.github.io/parvenu/reference/par_match_term.md)
   : Find which term each string contains, in parallel
 - [`par_replace_term()`](https://lhdjung.github.io/parvenu/reference/par_replace_term.md)
   : Replace dictionary terms, in parallel

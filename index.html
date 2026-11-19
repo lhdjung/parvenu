@@ -15,8 +15,8 @@
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Multithreaded Base R Functions and Text Search for Large Vectors">
-<meta name="description" content="Multithreaded functions for large vectors, written in Rust, in two families. Versions of match(), %in%, duplicated(), unique(), anyDuplicated(), union(), intersect(), setdiff(), factor(), table(), findInterval(), as.Date(), as.POSIXct(), rank(), rowsum(), and approx() give the same results as base R, and fall back to it below the size where threads pay off; rows can also be matched on several key columns at once. Text search detects, counts, locates, extracts, and replaces regex matches, in the syntax of Rust's regex crate, and looks up many literal terms or regexes at once: which of them each string contains, how many hits it has, or replacing them all, in one pass per string.">
-<meta property="og:description" content="Multithreaded functions for large vectors, written in Rust, in two families. Versions of match(), %in%, duplicated(), unique(), anyDuplicated(), union(), intersect(), setdiff(), factor(), table(), findInterval(), as.Date(), as.POSIXct(), rank(), rowsum(), and approx() give the same results as base R, and fall back to it below the size where threads pay off; rows can also be matched on several key columns at once. Text search detects, counts, locates, extracts, and replaces regex matches, in the syntax of Rust's regex crate, and looks up many literal terms or regexes at once: which of them each string contains, how many hits it has, or replacing them all, in one pass per string.">
+<meta name="description" content="Multithreaded functions for large vectors, written in Rust, in two families. Versions of match(), %in%, duplicated(), unique(), anyDuplicated(), union(), intersect(), setdiff(), factor(), table(), findInterval(), as.Date(), as.POSIXct(), rank(), rowsum(), and approx() give the same results as base R, and fall back to it below the size where threads pay off; rows can also be matched on several key columns at once. Text search detects, counts, locates, extracts, and replaces regex matches, in the syntax of Rust's regex crate, and looks up many literal terms or regexes at once: which of them each string contains, how many hits it has, where they are, or replacing them all, in one pass per string.">
+<meta property="og:description" content="Multithreaded functions for large vectors, written in Rust, in two families. Versions of match(), %in%, duplicated(), unique(), anyDuplicated(), union(), intersect(), setdiff(), factor(), table(), findInterval(), as.Date(), as.POSIXct(), rank(), rowsum(), and approx() give the same results as base R, and fall back to it below the size where threads pay off; rows can also be matched on several key columns at once. Text search detects, counts, locates, extracts, and replaces regex matches, in the syntax of Rust's regex crate, and looks up many literal terms or regexes at once: which of them each string contains, how many hits it has, where they are, or replacing them all, in one pass per string.">
 <meta property="og:image" content="https://lhdjung.github.io/parvenu/logo.png">
 </head>
 <body>
@@ -70,7 +70,7 @@
 <li>Text search: regex detection, counting, location, extraction, and replacement. Also dictionary lookup and replacement of many terms at once.</li>
 </ul>
 <p><code><a href="reference/par_match.html">par_match()</a></code>, <code>%par_in%</code>, <code><a href="reference/par_duplicated.html">par_duplicated()</a></code>, <code><a href="reference/par_duplicated.html">par_unique()</a></code>, <code><a href="reference/par_duplicated.html">par_any_duplicated()</a></code>, <code><a href="reference/par_union.html">par_union()</a></code>, <code><a href="reference/par_union.html">par_intersect()</a></code>, <code><a href="reference/par_union.html">par_setdiff()</a></code>, <code><a href="reference/par_factor.html">par_factor()</a></code>, <code><a href="reference/par_factor.html">par_table()</a></code>, <code><a href="reference/par_find_interval.html">par_find_interval()</a></code>, and the functions under <a href="#dates-ranks-and-sums">Dates, ranks, and sums</a> behave exactly like base R, so they are drop-in replacements. <code><a href="reference/par_detect.html">par_detect()</a></code> is <code><a href="https://rdrr.io/r/base/grep.html" class="external-link">grepl()</a></code> with the syntax of Rust’s <a href="https://docs.rs/regex/latest/regex/#syntax" class="external-link">regex crate</a>, which never backtracks.</p>
-<p>The gains are largest where base R is slow and the work is bound by CPU: matching text against a large dictionary of terms, and looking up millions of keys.</p>
+<p>The gains are largest where base R is slow and the work is bound by CPU: matching text against a large dictionary of terms, and looking up millions of keys. <a href="#parvenu-stringfish-and-ahocorasick">Below</a>, it is compared with stringfish and ahocorasick, which also search text fast.</p>
 <div class="section level2">
 <h2 id="when-the-wait-matters">When the wait matters<a class="anchor" aria-label="anchor" href="#when-the-wait-matters"></a>
 </h2>
@@ -233,7 +233,7 @@ Show code
 <span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co">#&gt; 2 parvenu (default)       2.55ms</span></span>
 <span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co">#&gt; 3 parvenu (ignore case)    2.6ms</span></span></code></pre></div>
 <p><img src="https://raw.githubusercontent.com/lhdjung/parvenu/figures/man/figures/README-term-1.png" alt="Timings on a log scale: parvenu takes milliseconds, a stringi loop over the terms takes seconds." width="100%"></p>
-<p><code><a href="reference/par_match_term.html">par_count_term()</a></code> counts the hits of the terms in each string. With <code>weights</code>, it sums their scores, as for scoring text against a sentiment lexicon. <code><a href="reference/par_match_term.html">par_which_term()</a></code> finds every term each string contains, for tagging. <code><a href="reference/par_replace_term.html">par_replace_term()</a></code> replaces each term with its replacement: 1,000 terms in 100,000 strings take 21ms, where stringi’s <code>stri_replace_all_fixed(vectorize_all = FALSE)</code> takes 3.7s. With <code>fixed = FALSE</code>, the terms of all four <code>_term</code> functions are regexes, searched in one pass. That is slower than literal terms, but several times faster than one <code><a href="reference/par_detect.html">par_detect()</a></code> per term.</p>
+<p><code><a href="reference/par_match_term.html">par_count_term()</a></code> counts the hits of the terms in each string. With <code>weights</code>, it sums their scores, as for scoring text against a sentiment lexicon. <code><a href="reference/par_match_term.html">par_which_term()</a></code> finds every term each string contains, for tagging, and <code><a href="reference/par_match_term.html">par_locate_term_all()</a></code> where each hit is, for highlighting. <code><a href="reference/par_replace_term.html">par_replace_term()</a></code> replaces each term with its replacement: 1,000 terms in 100,000 strings take 21ms, where stringi’s <code>stri_replace_all_fixed(vectorize_all = FALSE)</code> takes 3.7s. With <code>fixed = FALSE</code>, the terms of every <code>_term</code> function are regexes, searched in one pass. That is slower than literal terms, but several times faster than one <code><a href="reference/par_detect.html">par_detect()</a></code> per term.</p>
 </div>
 </div>
 <div class="section level2">
@@ -269,7 +269,7 @@ Show code
 <div class="section level2">
 <h2 id="single-calls">Single calls<a class="anchor" aria-label="anchor" href="#single-calls"></a>
 </h2>
-<p>Timed on 8 cores, against base R (the sections above and <code>bench/</code> have the details, and comparisons with collapse, stringi, and data.table):</p>
+<p>Timed on 8 cores, against base R (the sections above and <code>bench/</code> have the details, and comparisons with collapse, stringi, stringfish, ahocorasick, and data.table):</p>
 <table style="width:100%;" class="table">
 <colgroup>
 <col width="16%">
@@ -432,6 +432,82 @@ Show code
 <h2 id="threads">Threads<a class="anchor" aria-label="anchor" href="#threads"></a>
 </h2>
 <p>The default is all cores, or the <code>RAYON_NUM_THREADS</code> environment variable. Every function takes <code>nthreads</code>, and <code>options(parvenu.threads = 2)</code> sets the default for a session. Inputs too small to keep that many threads busy use fewer.</p>
+</div>
+<div class="section level2">
+<h2 id="parvenu-stringfish-and-ahocorasick">parvenu, stringfish, and ahocorasick<a class="anchor" aria-label="anchor" href="#parvenu-stringfish-and-ahocorasick"></a>
+</h2>
+<p>Two other packages search text fast. <a href="https://github.com/traversc/stringfish" class="external-link">stringfish</a> runs common string functions on several threads, with PCRE2 for regexes. <a href="https://github.com/Yousa-Mirage/r-ahocorasick" class="external-link">ahocorasick</a> wraps the same Rust crate as parvenu’s <code>_term</code> functions, on one thread. Where they overlap, parvenu is faster in all but one case. On 1 million strings of about 22 bytes, on 8 cores (<code>bench/stringfish-ahocorasick.R</code>):</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr>
+<th>Task</th>
+<th>Other package</th>
+<th>parvenu</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Which strings contain any of 1,000 terms</td>
+<td>ahocorasick: 0.32s</td>
+<td>25ms</td>
+</tr>
+<tr>
+<td>Hits of 1,000 terms in each string</td>
+<td>ahocorasick: 0.41s</td>
+<td>31ms</td>
+</tr>
+<tr>
+<td>Where each hit of 1,000 terms is</td>
+<td>ahocorasick: 0.37s</td>
+<td>43ms</td>
+</tr>
+<tr>
+<td>Replace 1,000 terms</td>
+<td>ahocorasick: 0.54s</td>
+<td>82ms</td>
+</tr>
+<tr>
+<td>Detect a regex</td>
+<td>stringfish: 29ms</td>
+<td>7ms</td>
+</tr>
+<tr>
+<td>Detect an alternation of 1,000 terms, in 100,000 strings</td>
+<td>stringfish: 2.7s</td>
+<td>29ms</td>
+</tr>
+<tr>
+<td>Replace every digit, so that every string changes</td>
+<td>stringfish: 0.18s</td>
+<td>0.20s</td>
+</tr>
+<tr>
+<td>
+<code><a href="https://rdrr.io/r/base/match.html" class="external-link">match()</a></code> of 10 million strings in 1 million keys</td>
+<td>stringfish: 0.54s</td>
+<td>45ms</td>
+</tr>
+</tbody>
+</table>
+<p>The gains have different sources:</p>
+<ul>
+<li>
+<strong>ahocorasick: threads, and the cost per string.</strong> The search itself takes the same time in both, since it is the same automaton. But ahocorasick copies each string into Rust first, which costs more than searching a short string. For long documents, the gap is about the number of cores: on 10,000 strings of 2,200 bytes, the same text, both take 0.15s on one thread, and parvenu takes 27ms on 8.</li>
+<li>
+<strong>stringfish: the regex engine.</strong> Both scale with threads. But PCRE2 backtracks, and Rust’s regex crate doesn’t. On one thread, parvenu detects a regex 3 to 5 times faster. It also compiles an alternation of literal terms into one automaton, where PCRE2 tries the terms one by one. Replacing is closer: only R’s own thread can make R strings, and that takes most of the time when many strings change. stringfish is faster where every string changes.</li>
+</ul>
+<p>Some functions are in only one of the packages:</p>
+<ul>
+<li>
+<strong>Only parvenu:</strong> counting, extracting, and locating regex matches, and capture groups. For terms: the first term in the order of <code>terms</code>, weights, whole words, regex terms, and ignoring case beyond ASCII. And the whole base R family, from <code><a href="https://rdrr.io/r/base/match.html" class="external-link">match()</a></code> and <code><a href="https://rdrr.io/r/base/duplicated.html" class="external-link">duplicated()</a></code> to dates and <code><a href="https://rdrr.io/r/base/rank.html" class="external-link">rank()</a></code>, of which stringfish covers only <code><a href="https://rdrr.io/r/base/match.html" class="external-link">match()</a></code>.</li>
+<li>
+<strong>Only stringfish:</strong> splitting, substrings, pasting, <code><a href="https://rdrr.io/r/base/nchar.html" class="external-link">nchar()</a></code>, trimming, case and encoding conversion, and reading and writing lines. Its functions return their own lazy strings, so a chain of stringfish calls makes R strings only at the end.</li>
+<li>
+<strong>Only ahocorasick:</strong> searching files, also as a stream. Its leftmost-longest matching is <code><a href="reference/par_replace_term.html">par_replace_term()</a></code> with the longest terms first.</li>
+</ul>
 </div>
 <div class="section level2">
 <h2 id="parvenu-and-process-pools">parvenu and process pools<a class="anchor" aria-label="anchor" href="#parvenu-and-process-pools"></a>

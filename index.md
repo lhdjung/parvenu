@@ -40,7 +40,8 @@ never backtracks.
 
 The gains are largest where base R is slow and the work is bound by CPU:
 matching text against a large dictionary of terms, and looking up
-millions of keys.
+millions of keys. [Below](#parvenu-stringfish-and-ahocorasick), it is
+compared with stringfish and ahocorasick, which also search text fast.
 
 ## When the wait matters
 
@@ -236,12 +237,14 @@ seconds.](https://raw.githubusercontent.com/lhdjung/parvenu/figures/man/figures/
 counts the hits of the terms in each string. With `weights`, it sums
 their scores, as for scoring text against a sentiment lexicon.
 [`par_which_term()`](https://lhdjung.github.io/parvenu/reference/par_match_term.md)
-finds every term each string contains, for tagging.
+finds every term each string contains, for tagging, and
+[`par_locate_term_all()`](https://lhdjung.github.io/parvenu/reference/par_match_term.md)
+where each hit is, for highlighting.
 [`par_replace_term()`](https://lhdjung.github.io/parvenu/reference/par_replace_term.md)
 replaces each term with its replacement: 1,000 terms in 100,000 strings
 take 21ms, where stringi’s
 `stri_replace_all_fixed(vectorize_all = FALSE)` takes 3.7s. With
-`fixed = FALSE`, the terms of all four `_term` functions are regexes,
+`fixed = FALSE`, the terms of every `_term` function are regexes,
 searched in one pass. That is slower than literal terms, but several
 times faster than one
 [`par_detect()`](https://lhdjung.github.io/parvenu/reference/par_detect.md)
@@ -317,7 +320,8 @@ base takes almost a second.
 ## Single calls
 
 Timed on 8 cores, against base R (the sections above and `bench/` have
-the details, and comparisons with collapse, stringi, and data.table):
+the details, and comparisons with collapse, stringi, stringfish,
+ahocorasick, and data.table):
 
 | Function | Replaces | Task | Time | Base R | Speedup |
 |----|----|----|----|----|----|
@@ -373,6 +377,64 @@ The default is all cores, or the `RAYON_NUM_THREADS` environment
 variable. Every function takes `nthreads`, and
 `options(parvenu.threads = 2)` sets the default for a session. Inputs
 too small to keep that many threads busy use fewer.
+
+## parvenu, stringfish, and ahocorasick
+
+Two other packages search text fast.
+[stringfish](https://github.com/traversc/stringfish) runs common string
+functions on several threads, with PCRE2 for regexes.
+[ahocorasick](https://github.com/Yousa-Mirage/r-ahocorasick) wraps the
+same Rust crate as parvenu’s `_term` functions, on one thread. Where
+they overlap, parvenu is faster in all but one case. On 1 million
+strings of about 22 bytes, on 8 cores
+(`bench/stringfish-ahocorasick.R`):
+
+| Task | Other package | parvenu |
+|----|----|----|
+| Which strings contain any of 1,000 terms | ahocorasick: 0.32s | 25ms |
+| Hits of 1,000 terms in each string | ahocorasick: 0.41s | 31ms |
+| Where each hit of 1,000 terms is | ahocorasick: 0.37s | 43ms |
+| Replace 1,000 terms | ahocorasick: 0.54s | 82ms |
+| Detect a regex | stringfish: 29ms | 7ms |
+| Detect an alternation of 1,000 terms, in 100,000 strings | stringfish: 2.7s | 29ms |
+| Replace every digit, so that every string changes | stringfish: 0.18s | 0.20s |
+| [`match()`](https://rdrr.io/r/base/match.html) of 10 million strings in 1 million keys | stringfish: 0.54s | 45ms |
+
+The gains have different sources:
+
+- **ahocorasick: threads, and the cost per string.** The search itself
+  takes the same time in both, since it is the same automaton. But
+  ahocorasick copies each string into Rust first, which costs more than
+  searching a short string. For long documents, the gap is about the
+  number of cores: on 10,000 strings of 2,200 bytes, the same text, both
+  take 0.15s on one thread, and parvenu takes 27ms on 8.
+- **stringfish: the regex engine.** Both scale with threads. But PCRE2
+  backtracks, and Rust’s regex crate doesn’t. On one thread, parvenu
+  detects a regex 3 to 5 times faster. It also compiles an alternation
+  of literal terms into one automaton, where PCRE2 tries the terms one
+  by one. Replacing is closer: only R’s own thread can make R strings,
+  and that takes most of the time when many strings change. stringfish
+  is faster where every string changes.
+
+Some functions are in only one of the packages:
+
+- **Only parvenu:** counting, extracting, and locating regex matches,
+  and capture groups. For terms: the first term in the order of `terms`,
+  weights, whole words, regex terms, and ignoring case beyond ASCII. And
+  the whole base R family, from
+  [`match()`](https://rdrr.io/r/base/match.html) and
+  [`duplicated()`](https://rdrr.io/r/base/duplicated.html) to dates and
+  [`rank()`](https://rdrr.io/r/base/rank.html), of which stringfish
+  covers only [`match()`](https://rdrr.io/r/base/match.html).
+- **Only stringfish:** splitting, substrings, pasting,
+  [`nchar()`](https://rdrr.io/r/base/nchar.html), trimming, case and
+  encoding conversion, and reading and writing lines. Its functions
+  return their own lazy strings, so a chain of stringfish calls makes R
+  strings only at the end.
+- **Only ahocorasick:** searching files, also as a stream. Its
+  leftmost-longest matching is
+  [`par_replace_term()`](https://lhdjung.github.io/parvenu/reference/par_replace_term.md)
+  with the longest terms first.
 
 ## parvenu and process pools
 

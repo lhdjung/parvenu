@@ -17,6 +17,9 @@ For each string in `x`:
   contains, with the number of hits. This is a document-term matrix in
   long form.
 
+- `par_locate_term_all()` finds where each hit is, such as to highlight
+  terms or show them in context.
+
 ## Usage
 
 ``` r
@@ -49,6 +52,15 @@ par_which_term(
 )
 
 par_match_term_all(
+  x,
+  terms,
+  ignore_case = FALSE,
+  whole_word = FALSE,
+  fixed = TRUE,
+  nthreads = getOption("parvenu.threads", 0L)
+)
+
+par_locate_term_all(
   x,
   terms,
   ignore_case = FALSE,
@@ -137,6 +149,14 @@ par_match_term_all(
   `par_count_term()` counts them. Strings with no term, and `NA`, have
   no rows.
 
+- `par_locate_term_all()`: a data frame with one row per hit, the hits
+  that `par_count_term()` counts, sorted by `x`, then by `start`, then
+  by `term`. Columns `x` and `term` are as above. `start` and `end` are
+  the positions of the first and last characters of the hit, as in
+  [`par_locate()`](https://lhdjung.github.io/parvenu/reference/par_extract.md).
+  An empty term's hit has `end` one less than `start`. Strings with no
+  term, and `NA`, have no rows.
+
 ## Details
 
 Terms are literal, as in `grepl(fixed = TRUE)`, so no character needs
@@ -197,6 +217,12 @@ par_match_term_all(c("york and new york", "rome", NA), cities)
 #>   x term n
 #> 1 1    1 1
 #> 2 1    2 2
+
+par_locate_term_all(c("york and new york", "rome", NA), cities)
+#>   x term start end
+#> 1 1    2     1   4
+#> 2 1    1    10  17
+#> 3 1    2    14  17
 
 par_match_term(c("call 555-1234", "mail a@b.org"), c("\\d{3}-\\d{4}", "@"), fixed = FALSE)
 #> [1] 1 2
