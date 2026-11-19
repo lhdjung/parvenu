@@ -1,0 +1,10 @@
+pandoc: 3.8.3
+pkgdown: 2.2.1
+pkgdown_sha: ~
+articles:
+  articles/performance: performance.html
+  articles/use-cases: use-cases.html
+last_built: 2026-11-19T10:41Z
+urls:
+  reference: https://lhdjung.github.io/parvenu/reference
+  article: https://lhdjung.github.io/parvenu/articles
