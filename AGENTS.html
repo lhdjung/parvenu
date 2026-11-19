@@ -60,7 +60,7 @@
 </div>
 <div class="section level2">
 <h2 id="ci-status">CI status<a class="anchor" aria-label="anchor" href="#ci-status"></a></h2>
-<p>CI passed on all four jobs at 2186e4d (2026-11-07), on R 4.6.2 as “release”. R 4.6.2 changed how <code><a href="https://rdrr.io/r/base/strptime.html" class="external-link">strptime()</a></code> reads seconds, which only CI caught, since R 4.5 is installed locally. Linux and Windows differ from macOS in ways local tests miss, so check each job after a push with <code>gh run view &lt;id&gt;</code>.</p>
+<p>CI passed on all four jobs at 120d1c1 (2026-11-19), on R 4.6.2 as “release” and Rust 1.100 as “stable”. R 4.6.2 changed how <code><a href="https://rdrr.io/r/base/strptime.html" class="external-link">strptime()</a></code> reads seconds, which only CI caught, since R 4.5 is installed locally. Rust 1.100’s std calls <code>WaitOnAddress</code> on Windows, so <code>src/Makevars.win.in</code> links <code>-lsynchronization</code>; a new Rust can need another library there, which shows as “undefined reference” in <code>00install.out</code>. Linux and Windows differ from macOS in ways local tests miss, so check each job after a push with <code>gh run view &lt;id&gt;</code>.</p>
 </div>
 </div>
 
