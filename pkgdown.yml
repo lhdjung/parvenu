@@ -4,7 +4,7 @@ pkgdown_sha: ~
 articles:
   articles/performance: performance.html
   articles/use-cases: use-cases.html
-last_built: 2026-11-19T15:09Z
+last_built: 2026-11-20T17:03Z
 urls:
   reference: https://lhdjung.github.io/parvenu/reference
   article: https://lhdjung.github.io/parvenu/articles
