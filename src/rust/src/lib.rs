@@ -306,6 +306,14 @@ fn mark<X: Sync, K: Copy + Hash + Eq + Send + Sync, V: Copy + Send + Sync>(
 }
 
 /// A pointer that threads may share, for writes to disjoint elements.
+///
+/// It only ever points into a Rust `Vec` or slice, never into memory R
+/// manages, and threads write to it at computed indices (a scatter), so
+/// `par_chunks_mut()` and the like don't fit. Stable Rust has no safe type
+/// for this; `SyncUnsafeCell` would do but is nightly only. A blanket
+/// `Send for Robj`, as floated in extendr, wouldn't replace it, since no
+/// `Robj` is involved. Revisit if extendr gains a safe construct for
+/// parallel writes into vectors.
 struct Shared<T>(*mut T);
 unsafe impl<T> Sync for Shared<T> {}
 impl<T> Shared<T> {
