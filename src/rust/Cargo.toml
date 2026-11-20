@@ -15,6 +15,7 @@ path = 'document.rs'
 
 [dependencies]
 extendr-api = '0.9'
+extendr-ffi = '0.9'
 rayon = '1'
 rustc-hash = '2'
 regex = '1'

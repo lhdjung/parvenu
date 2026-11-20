@@ -5,26 +5,20 @@ use rustc_hash::{FxBuildHasher, FxHashMap as HashMap};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::hash::{BuildHasher, Hash};
-use std::os::raw::{c_char, c_int, c_uint};
+use std::os::raw::{c_char, c_int};
 use std::sync::{Arc, Mutex};
 
-// Public R API that extendr doesn't wrap. SEXP is opaque, so the lint is moot.
+use extendr_ffi::{
+    cetype_t, R_DimNamesSymbol, R_DimSymbol, R_NaString, Rf_allocVector, Rf_mkCharLenCE,
+    Rf_setAttrib, INTEGER, LENGTH, R_CHAR, SET_STRING_ELT, SET_VECTOR_ELT, SEXPTYPE, STRING_PTR_RO,
+};
+
+// Public R API that extendr-ffi doesn't declare. SEXP is opaque, so the lint
+// is moot.
 #[allow(improper_ctypes)]
 extern "C" {
-    fn STRING_PTR_RO(x: SEXP) -> *const SEXP;
     fn Rf_getCharCE(x: SEXP) -> c_int;
-    fn R_CHAR(x: SEXP) -> *const c_char;
-    fn LENGTH(x: SEXP) -> c_int;
-    fn Rf_mkCharLenCE(s: *const c_char, len: c_int, enc: c_uint) -> SEXP;
-    fn Rf_allocVector(t: c_uint, n: isize) -> SEXP;
-    fn INTEGER(x: SEXP) -> *mut c_int;
-    fn SET_STRING_ELT(x: SEXP, i: isize, v: SEXP);
-    fn SET_VECTOR_ELT(x: SEXP, i: isize, v: SEXP) -> SEXP;
-    fn Rf_setAttrib(x: SEXP, name: SEXP, v: SEXP) -> SEXP;
     fn Rf_shallow_duplicate(x: SEXP) -> SEXP;
-    static R_NaString: SEXP;
-    static R_DimSymbol: SEXP;
-    static R_DimNamesSymbol: SEXP;
 }
 
 const NA_INT: i32 = i32::MIN;
@@ -1234,7 +1228,11 @@ unsafe fn string(piece: Piece, p: usize) -> extendr_api::Result<SEXP> {
         Ok(Rf_mkCharLenCE(
             s.as_ptr() as *const c_char,
             n,
-            if ce == 3 { 3 } else { 1 },
+            if ce == 3 {
+                cetype_t::CE_BYTES
+            } else {
+                cetype_t::CE_UTF8
+            },
         ))
     };
     let mut buf = Vec::new();
@@ -1409,7 +1407,7 @@ fn par_locate_all_rs(
     let matrix = |m: usize| -> Robj {
         let dim = Robj::from([m as i32, 2]);
         unsafe {
-            let v = Robj::from_sexp(Rf_allocVector(13, 2 * m as isize));
+            let v = Robj::from_sexp(Rf_allocVector(SEXPTYPE::INTSXP, 2 * m as isize));
             Rf_setAttrib(v.get(), R_DimSymbol, dim.get());
             Rf_setAttrib(v.get(), R_DimNamesSymbol, dimnames.get());
             v
@@ -1480,7 +1478,10 @@ fn par_extract_all_rs(
     let res: Robj = List::new(out.len()).into();
     for (i, (pieces, &p)) in out.into_iter().zip(x).enumerate() {
         unsafe {
-            let v = Rf_allocVector(16, pieces.as_ref().map_or(1, |v| v.len()) as isize);
+            let v = Rf_allocVector(
+                SEXPTYPE::STRSXP,
+                pieces.as_ref().map_or(1, |v| v.len()) as isize,
+            );
             SET_VECTOR_ELT(res.get(), i as isize, v);
             for (k, piece) in pieces.unwrap_or(vec![Piece::Na]).into_iter().enumerate() {
                 SET_STRING_ELT(v, k as isize, string(piece, p)?);
@@ -2166,7 +2167,7 @@ fn par_which_term_rs(
     let res: Robj = List::new(out.len()).into();
     for (i, t) in out.into_iter().enumerate() {
         unsafe {
-            let v = Rf_allocVector(13, t.as_ref().map_or(1, |t| t.len()) as isize);
+            let v = Rf_allocVector(SEXPTYPE::INTSXP, t.as_ref().map_or(1, |t| t.len()) as isize);
             // No slice: R gives an empty vector the misaligned data pointer 1.
             let ints = INTEGER(v);
             match t {
