@@ -234,7 +234,7 @@ hexs <- pts(260, 10, 511.1, 155, 511.1, 445, 260, 590, 8.9, 445, 8.9, 155)
 font <- paste(
   'font-family="Linux Libertine O, Linux Libertine, Libertinus Serif, serif"',
   'font-style="italic" font-size="70" fill="#f4e07c"',
-  'stroke="#24481b" stroke-width="6" paint-order="stroke"'
+  'stroke="#24481b" stroke-width="3" paint-order="stroke"'
 )
 
 svg <- c(
